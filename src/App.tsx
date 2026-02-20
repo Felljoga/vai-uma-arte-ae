@@ -1,105 +1,172 @@
-import { useState, useEffect, useRef } from 'react';
+// VAI UMA ARTE AÊ?! - Site Oficial
+// Sistema completo com autenticação Firebase
+import { useState, useEffect, useRef, createContext, useContext, ReactNode, useCallback } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useInView } from 'framer-motion';
-import { AppProvider, useApp } from '@/contexts/AppContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import AuthModal from './components/AuthModal';
+import UserProfile from './components/UserProfile';
 
-// ============ ICONS ============
-const Icons = {
-  Sound: () => (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-    </svg>
-  ),
-  SoundOff: () => (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-    </svg>
-  ),
-  Sun: () => (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-    </svg>
-  ),
-  Moon: () => (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-    </svg>
-  ),
-  WhatsApp: () => (
-    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-    </svg>
-  ),
-  Instagram: () => (
-    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-    </svg>
-  ),
-  Sparkles: () => (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-    </svg>
-  ),
-  Menu: () => (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  ),
-  Close: () => (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  ),
-  ArrowRight: () => (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-    </svg>
-  ),
-  Star: () => (
-    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-    </svg>
-  ),
-  Play: () => (
-    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M8 5v14l11-7z"/>
-    </svg>
-  ),
-  Accessibility: () => (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-    </svg>
-  ),
+// ==================== SOUND CONTEXT ====================
+interface SoundContextType {
+  soundEnabled: boolean;
+  volume: number;
+  toggleSound: () => void;
+  setVolume: (v: number) => void;
+  playPop: () => void;
+  playWhoosh: () => void;
+  playClick: () => void;
+  playGlitch: () => void;
+  playHover: () => void;
+}
+
+const SoundContext = createContext<SoundContextType | null>(null);
+
+const useSound = () => {
+  const context = useContext(SoundContext);
+  if (!context) return {
+    soundEnabled: false, volume: 0.5, toggleSound: () => {}, setVolume: () => {},
+    playPop: () => {}, playWhoosh: () => {}, playClick: () => {}, playGlitch: () => {}, playHover: () => {}
+  };
+  return context;
 };
 
-// ============ PARTICLES BACKGROUND ============
-const ParticlesBackground = () => {
-  const { reducedMotion } = useApp();
-  
-  if (reducedMotion) return null;
-  
+const SoundProvider = ({ children }: { children: ReactNode }) => {
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [volume, setVolume] = useState(0.5);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  const getAudioContext = useCallback(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return audioContextRef.current;
+  }, []);
+
+  const playTone = useCallback((frequency: number, duration: number, type: OscillatorType = 'sine', gainValue = 0.3) => {
+    if (!soundEnabled) return;
+    try {
+      const ctx = getAudioContext();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+      oscillator.type = type;
+      gainNode.gain.setValueAtTime(gainValue * volume, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + duration);
+    } catch {}
+  }, [soundEnabled, volume, getAudioContext]);
+
+  const playPop = useCallback(() => playTone(800, 0.1, 'sine', 0.2), [playTone]);
+  const playWhoosh = useCallback(() => {
+    if (!soundEnabled) return;
+    try {
+      const ctx = getAudioContext();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.frequency.setValueAtTime(200, ctx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.15);
+      oscillator.type = 'sine';
+      gainNode.gain.setValueAtTime(0.1 * volume, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.15);
+    } catch {}
+  }, [soundEnabled, volume, getAudioContext]);
+  const playClick = useCallback(() => playTone(1200, 0.05, 'square', 0.1), [playTone]);
+  const playGlitch = useCallback(() => playTone(150, 0.08, 'sawtooth', 0.15), [playTone]);
+  const playHover = useCallback(() => playTone(600, 0.05, 'sine', 0.1), [playTone]);
+
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {[...Array(30)].map((_, i) => (
+    <SoundContext.Provider value={{
+      soundEnabled, volume, toggleSound: () => setSoundEnabled(!soundEnabled),
+      setVolume, playPop, playWhoosh, playClick, playGlitch, playHover
+    }}>
+      {children}
+    </SoundContext.Provider>
+  );
+};
+
+// ==================== ACCESSIBILITY CONTEXT ====================
+interface AccessibilityContextType {
+  reduceMotion: boolean;
+  highContrast: boolean;
+  toggleReduceMotion: () => void;
+  toggleHighContrast: () => void;
+}
+
+const AccessibilityContext = createContext<AccessibilityContextType>({
+  reduceMotion: false, highContrast: false, toggleReduceMotion: () => {}, toggleHighContrast: () => {}
+});
+
+const useAccessibility = () => useContext(AccessibilityContext);
+
+const AccessibilityProvider = ({ children }: { children: ReactNode }) => {
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduceMotion(prefersReducedMotion.matches);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('reduce-motion', reduceMotion);
+    document.documentElement.classList.toggle('high-contrast', highContrast);
+  }, [reduceMotion, highContrast]);
+
+  return (
+    <AccessibilityContext.Provider value={{
+      reduceMotion, highContrast,
+      toggleReduceMotion: () => setReduceMotion(!reduceMotion),
+      toggleHighContrast: () => setHighContrast(!highContrast)
+    }}>
+      {children}
+    </AccessibilityContext.Provider>
+  );
+};
+
+// ==================== PARTICLES ====================
+const Particles = () => {
+  const particles = Array.from({ length: 30 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: Math.random() * 4 + 2,
+    duration: Math.random() * 20 + 10,
+    delay: Math.random() * 5,
+    color: ['#a855f7', '#3b82f6', '#06b6d4', '#ec4899'][Math.floor(Math.random() * 4)]
+  }));
+
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      {particles.map((p) => (
         <motion.div
-          key={i}
-          className="absolute w-1 h-1 rounded-full"
+          key={p.id}
+          className="absolute rounded-full"
           style={{
-            left: `${Math.random() * 100}%`,
-            background: i % 3 === 0 ? '#a855f7' : i % 3 === 1 ? '#3b82f6' : '#22d3ee',
-            boxShadow: `0 0 ${10 + Math.random() * 10}px currentColor`,
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            boxShadow: `0 0 ${p.size * 2}px ${p.color}`,
+            opacity: 0.6
           }}
-          initial={{ y: '100vh', opacity: 0 }}
           animate={{
-            y: '-10vh',
-            opacity: [0, 1, 1, 0],
-            rotate: 720,
+            y: [0, -100, 0],
+            x: [0, Math.random() * 50 - 25, 0],
+            opacity: [0.2, 0.6, 0.2]
           }}
           transition={{
-            duration: 15 + Math.random() * 20,
+            duration: p.duration,
             repeat: Infinity,
-            delay: Math.random() * 15,
-            ease: 'linear',
+            delay: p.delay,
+            ease: "easeInOut"
           }}
         />
       ))}
@@ -107,575 +174,418 @@ const ParticlesBackground = () => {
   );
 };
 
-// ============ LOADER ============
-const Loader = ({ onComplete }: { onComplete: () => void }) => {
-  const [progress, setProgress] = useState(0);
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(onComplete, 500);
-          return 100;
-        }
-        return prev + Math.random() * 15;
-      });
-    }, 100);
-    return () => clearInterval(interval);
-  }, [onComplete]);
-
-  return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0a0f]"
-      exit={{ opacity: 0, scale: 1.1 }}
-      transition={{ duration: 0.8 }}
-    >
-      <div className="text-center">
-        <motion.h1
-          className="text-4xl md:text-6xl font-display gradient-text mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          VAI UMA ARTE AÊ?!
-        </motion.h1>
-        
-        <div className="w-64 h-1 bg-white/10 rounded-full overflow-hidden mx-auto">
-          <motion.div
-            className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500"
-            initial={{ width: 0 }}
-            animate={{ width: `${Math.min(progress, 100)}%` }}
-          />
-        </div>
-        
-        <motion.p
-          className="mt-4 text-white/50 font-body text-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          Preparando o universo criativo...
-        </motion.p>
-        
-        <motion.div
-          className="mt-8 flex justify-center gap-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          {[0, 1, 2].map(i => (
-            <motion.div
-              key={i}
-              className="w-3 h-3 rounded-full bg-purple-500"
-              animate={{
-                scale: [1, 1.5, 1],
-                opacity: [0.5, 1, 0.5],
-              }}
-              transition={{
-                duration: 1,
-                repeat: Infinity,
-                delay: i * 0.2,
-              }}
-            />
-          ))}
-        </motion.div>
-      </div>
-    </motion.div>
-  );
-};
-
-// ============ HEADER ============
-const Header = () => {
-  const { soundEnabled, toggleSound, isDarkMode, toggleTheme, playClick } = useApp();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+// ==================== HEADER ====================
+const Header = ({ onOpenAuth }: { onOpenAuth: () => void }) => {
+  const { soundEnabled, toggleSound, volume, setVolume } = useSound();
+  const { reduceMotion, highContrast, toggleReduceMotion, toggleHighContrast } = useAccessibility();
+  const { user } = useAuth();
+  const [showAccessibility, setShowAccessibility] = useState(false);
+  const [showVolume, setShowVolume] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navItems = ['Portfólio', 'Serviços', 'Estilos', 'Depoimentos', 'Sobre'];
-
   return (
     <motion.header
-      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-        scrolled ? 'glass-dark py-3' : 'py-5'
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-gray-950/90 backdrop-blur-xl border-b border-white/10' : ''}`}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ delay: 0.5 }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          <motion.a
-            href="#"
-            className="font-display text-2xl gradient-text"
-            whileHover={{ scale: 1.05 }}
-            onClick={() => playClick()}
-          >
-            VAI UMA ARTE AÊ?!
-          </motion.a>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+        <motion.div
+          className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent"
+          whileHover={{ scale: 1.05 }}
+        >
+          VAI UMA ARTE AÊ?!
+        </motion.div>
 
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-6">
-            {navItems.map(item => (
-              <motion.a
-                key={item}
-                href={`#${item.toLowerCase()}`}
-                className="text-white/70 hover:text-white font-body text-sm transition-colors"
-                whileHover={{ y: -2 }}
-                onClick={() => playClick()}
-              >
-                {item}
-              </motion.a>
-            ))}
-          </nav>
-
-          {/* Controls */}
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Sound Button */}
+          <div className="relative" id="sound-button">
             <motion.button
-              onClick={() => { toggleSound(); playClick(); }}
-              className="p-2 rounded-full glass hover:bg-white/10 transition-colors text-white/70 hover:text-white"
+              onClick={toggleSound}
+              onMouseEnter={() => setShowVolume(true)}
+              onMouseLeave={() => setShowVolume(false)}
+              className={`p-2 sm:p-3 rounded-full transition-all ${soundEnabled ? 'bg-purple-600 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}
               whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              aria-label={soundEnabled ? 'Desativar som' : 'Ativar som'}
+              whileTap={{ scale: 0.95 }}
             >
-              {soundEnabled ? <Icons.Sound /> : <Icons.SoundOff />}
-            </motion.button>
-            
-            <motion.button
-              onClick={() => { toggleTheme(); playClick(); }}
-              className="p-2 rounded-full glass hover:bg-white/10 transition-colors text-white/70 hover:text-white"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              aria-label={isDarkMode ? 'Modo claro' : 'Modo escuro'}
-            >
-              {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+              {soundEnabled ? (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>
+              )}
             </motion.button>
 
-            <button
-              className="md:hidden p-2 text-white"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Menu"
-            >
-              {mobileMenuOpen ? <Icons.Close /> : <Icons.Menu />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.nav
-              className="md:hidden mt-4 pb-4"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-            >
-              {navItems.map((item, i) => (
-                <motion.a
-                  key={item}
-                  href={`#${item.toLowerCase()}`}
-                  className="block py-3 text-white/70 hover:text-white font-body border-b border-white/10"
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: i * 0.1 }}
-                  onClick={() => { setMobileMenuOpen(false); playClick(); }}
+            <AnimatePresence>
+              {showVolume && soundEnabled && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute top-full mt-2 right-0 bg-gray-900/95 backdrop-blur-xl rounded-xl p-3 border border-white/10 min-w-[120px]"
+                  onMouseEnter={() => setShowVolume(true)}
+                  onMouseLeave={() => setShowVolume(false)}
                 >
-                  {item}
-                </motion.a>
-              ))}
-            </motion.nav>
-          )}
-        </AnimatePresence>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={volume}
+                    onChange={(e) => setVolume(parseFloat(e.target.value))}
+                    className="w-full accent-purple-500"
+                  />
+                  <p className="text-xs text-gray-400 text-center mt-1">{Math.round(volume * 100)}%</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Accessibility Button */}
+          <div className="relative">
+            <motion.button
+              onClick={() => setShowAccessibility(!showAccessibility)}
+              className="p-2 sm:p-3 rounded-full bg-white/10 text-gray-400 hover:bg-white/20 transition-all"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            </motion.button>
+
+            <AnimatePresence>
+              {showAccessibility && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute top-full mt-2 right-0 bg-gray-900/95 backdrop-blur-xl rounded-xl p-4 border border-white/10 min-w-[200px] space-y-3"
+                >
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-sm text-gray-300">Reduzir movimento</span>
+                    <button
+                      onClick={toggleReduceMotion}
+                      className={`w-10 h-6 rounded-full transition-all ${reduceMotion ? 'bg-purple-600' : 'bg-gray-700'}`}
+                    >
+                      <div className={`w-4 h-4 bg-white rounded-full transition-all mx-1 ${reduceMotion ? 'translate-x-4' : ''}`} />
+                    </button>
+                  </label>
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-sm text-gray-300">Alto contraste</span>
+                    <button
+                      onClick={toggleHighContrast}
+                      className={`w-10 h-6 rounded-full transition-all ${highContrast ? 'bg-purple-600' : 'bg-gray-700'}`}
+                    >
+                      <div className={`w-4 h-4 bg-white rounded-full transition-all mx-1 ${highContrast ? 'translate-x-4' : ''}`} />
+                    </button>
+                  </label>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Auth Button */}
+          <motion.button
+            onClick={onOpenAuth}
+            className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium hover:from-purple-500 hover:to-pink-500 transition-all flex items-center gap-2"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {user ? (
+              <>
+                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs overflow-hidden">
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    (user.displayName || user.email || '?')[0].toUpperCase()
+                  )}
+                </div>
+                <span className="hidden sm:inline">Perfil</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span className="hidden sm:inline">Entrar</span>
+              </>
+            )}
+          </motion.button>
+        </div>
       </div>
     </motion.header>
   );
 };
 
-// ============ HERO SECTION ============
-const HeroSection = () => {
-  const { playWhoosh, playPop, reducedMotion } = useApp();
-  const ref = useRef(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
-  const y = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+// ==================== HERO SECTION ====================
+const HeroSection = ({ onOpenBudget }: { onOpenBudget: () => void }) => {
+  const { playWhoosh } = useSound();
+  const { scrollY } = useScroll();
+  const y = useTransform(scrollY, [0, 500], [0, 150]);
+  const opacity = useTransform(scrollY, [0, 300], [1, 0]);
 
   return (
-    <section ref={ref} className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Animated Background */}
-      <motion.div 
-        className="absolute inset-0 z-0"
-        style={reducedMotion ? {} : { y }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-[#0a0a0f] to-blue-900/20" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
-        
-        {/* Animated gradient orbs */}
-        {!reducedMotion && (
-          <>
-            <motion.div
-              className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"
-              animate={{
-                scale: [1, 1.2, 1],
-                x: [0, 50, 0],
-                y: [0, 30, 0],
-              }}
-              transition={{ duration: 8, repeat: Infinity }}
-            />
-            <motion.div
-              className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl"
-              animate={{
-                scale: [1.2, 1, 1.2],
-                x: [0, -30, 0],
-                y: [0, 50, 0],
-              }}
-              transition={{ duration: 10, repeat: Infinity }}
-            />
-            <motion.div
-              className="absolute top-1/2 right-1/3 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl"
-              animate={{
-                scale: [1, 1.3, 1],
-              }}
-              transition={{ duration: 6, repeat: Infinity }}
-            />
-          </>
-        )}
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* Background */}
+      <motion.div className="absolute inset-0" style={{ y }}>
+        <div className="absolute inset-0 bg-gradient-to-b from-purple-900/20 via-gray-950 to-gray-950" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[100px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-600/20 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
       </motion.div>
 
-      <motion.div 
-        className="relative z-10 text-center px-4 max-w-5xl mx-auto"
-        style={reducedMotion ? {} : { opacity }}
-      >
+      <motion.div className="relative z-10 text-center px-4 max-w-5xl mx-auto" style={{ opacity }}>
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <motion.span
-            className="inline-block px-4 py-2 mb-6 text-sm font-body text-purple-300 glass rounded-full"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.3, type: 'spring' }}
-          >
-            ✨ Estúdio criativo de design
-          </motion.span>
-        </motion.div>
-
-        <motion.h1
-          className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-display mb-6 leading-none"
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
         >
-          <span className="gradient-text glow-text">VAI UMA</span>
-          <br />
-          <span className="text-white">ARTE AÊ?!</span>
-        </motion.h1>
-
-        <motion.p
-          className="text-xl md:text-2xl text-white/70 font-body mb-10 max-w-2xl mx-auto"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-        >
-          Design que faz <span className="text-purple-400">barulho</span>. 
-          Sua marca, <span className="text-blue-400">impossível de ignorar</span>.
-        </motion.p>
-
-        <motion.div
-          className="flex flex-col sm:flex-row gap-4 justify-center"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-        >
-          <motion.a
-            href="#portfolio"
-            className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full font-heading font-semibold text-white overflow-hidden"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onHoverStart={() => playWhoosh()}
-            onClick={() => playPop()}
-          >
-            <span className="relative z-10 flex items-center justify-center gap-2">
-              Quero minha arte agora
-              <Icons.ArrowRight />
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black mb-6">
+            <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
+              VAI UMA
             </span>
-            <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-purple-400 to-blue-400"
-              initial={{ x: '-100%' }}
-              whileHover={{ x: 0 }}
-              transition={{ duration: 0.3 }}
-            />
-          </motion.a>
+            <br />
+            <span className="text-white">ARTE AÊ?!</span>
+          </h1>
 
-          <motion.a
-            href="#portfolio"
-            className="px-8 py-4 glass rounded-full font-heading font-semibold text-white hover:bg-white/10 transition-colors"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => playPop()}
+          <motion.p
+            className="text-xl sm:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
           >
-            Ver portfólio
-          </motion.a>
+            Design que faz barulho.
+            <br />
+            <span className="text-purple-400">Sua marca, impossível de ignorar.</span>
+          </motion.p>
+
+          <motion.div
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+            id="hero-buttons"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1 }}
+          >
+            <motion.button
+              onClick={() => { onOpenBudget(); playWhoosh(); }}
+              className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-white font-bold text-lg hover:from-purple-500 hover:to-pink-500 transition-all shadow-lg shadow-purple-500/25"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Quero minha arte agora 🎨
+            </motion.button>
+
+            <motion.a
+              href="#portfolio"
+              className="px-8 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white font-bold text-lg hover:bg-white/20 transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Ver portfólio
+            </motion.a>
+          </motion.div>
         </motion.div>
 
-        {/* Scroll indicator */}
+        {/* Scroll Indicator */}
         <motion.div
           className="absolute bottom-10 left-1/2 -translate-x-1/2"
           animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          transition={{ repeat: Infinity, duration: 2 }}
         >
-          <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
-            <motion.div
-              className="w-1.5 h-3 bg-white/50 rounded-full mt-2"
-              animate={{ opacity: [1, 0.3, 1], y: [0, 8, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-          </div>
+          <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
         </motion.div>
       </motion.div>
     </section>
   );
 };
 
-// ============ PORTFOLIO SECTION ============
+// ==================== PORTFOLIO SECTION ====================
 const portfolioItems = [
-  { id: 1, title: 'Identidade Neon Club', category: 'identidade', color: 'from-purple-500 to-pink-500' },
-  { id: 2, title: 'Feed @streetwear.br', category: 'social', color: 'from-orange-500 to-red-500' },
-  { id: 3, title: 'Flyer Festival 2024', category: 'flyers', color: 'from-cyan-500 to-blue-500' },
-  { id: 4, title: 'Capa EP "Noite"', category: 'capas', color: 'from-indigo-500 to-purple-500' },
-  { id: 5, title: 'Motion Logo Reveal', category: 'motion', color: 'from-green-500 to-teal-500' },
-  { id: 6, title: 'Stories Fitness Pro', category: 'social', color: 'from-rose-500 to-orange-500' },
+  { id: 1, title: 'Identidade Neon Club', category: 'identidade', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&h=600&fit=crop', color: '#a855f7' },
+  { id: 2, title: 'Feed Instagram Fitness', category: 'social', image: 'https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600&h=600&fit=crop', color: '#ec4899' },
+  { id: 3, title: 'Flyer Festa Eletrônica', category: 'flyers', image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop', color: '#3b82f6' },
+  { id: 4, title: 'Capa YouTube Gaming', category: 'capas', image: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=600&h=600&fit=crop', color: '#06b6d4' },
+  { id: 5, title: 'Logo Cafeteria Artesanal', category: 'identidade', image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=600&h=600&fit=crop', color: '#f59e0b' },
+  { id: 6, title: 'Stories Loja de Roupas', category: 'social', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=600&fit=crop', color: '#10b981' },
 ];
 
-const PortfolioSection = () => {
-  const [activeFilter, setActiveFilter] = useState('todos');
-  const [selectedItem, setSelectedItem] = useState<typeof portfolioItems[0] | null>(null);
-  const { playClick, playWhoosh, playGlitch } = useApp();
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+const categories = [
+  { id: 'all', name: 'Todos' },
+  { id: 'social', name: 'Social Media' },
+  { id: 'identidade', name: 'Identidade Visual' },
+  { id: 'flyers', name: 'Flyers' },
+  { id: 'capas', name: 'Capas' },
+];
 
-  const filters = ['todos', 'social', 'identidade', 'flyers', 'capas', 'motion'];
-  
-  const filteredItems = activeFilter === 'todos' 
-    ? portfolioItems 
-    : portfolioItems.filter(item => item.category === activeFilter);
+const PortfolioSection = ({ onOpenBudget }: { onOpenBudget: () => void }) => {
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [selectedItem, setSelectedItem] = useState<typeof portfolioItems[0] | null>(null);
+  const { playPop, playClick } = useSound();
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  const filteredItems = activeCategory === 'all' ? portfolioItems : portfolioItems.filter(item => item.category === activeCategory);
 
   return (
-    <section id="portfólio" ref={ref} className="py-20 md:py-32 px-4 relative">
+    <section id="portfolio" className="py-20 px-4 relative" data-tutorial-id="portfolio" ref={ref}>
       <div className="max-w-7xl mx-auto">
         <motion.div
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 30 }}
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: 50 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
         >
-          <span className="text-purple-400 font-body text-sm uppercase tracking-wider">Portfólio</span>
-          <h2 className="text-4xl md:text-6xl font-display mt-2 text-white">
-            Galeria de <span className="gradient-text">impacto</span>
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+            Galeria <span className="text-purple-400">Criativa</span>
           </h2>
-          <p className="text-white/60 font-body mt-4 max-w-xl mx-auto">
-            Cada projeto é uma história visual. Clica sem medo pra ver mais.
+          <p className="text-gray-400 max-w-2xl mx-auto">
+            Cada projeto conta uma história. Qual vai ser a sua?
           </p>
         </motion.div>
 
         {/* Filters */}
-        <motion.div
-          className="flex flex-wrap justify-center gap-3 mb-12"
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : {}}
-          transition={{ delay: 0.2 }}
-        >
-          {filters.map(filter => (
+        <div className="flex flex-wrap justify-center gap-2 mb-12">
+          {categories.map((cat) => (
             <motion.button
-              key={filter}
-              onClick={() => { setActiveFilter(filter); playClick(); }}
-              className={`px-5 py-2 rounded-full font-body text-sm capitalize transition-all ${
-                activeFilter === filter
-                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
-                  : 'glass text-white/70 hover:text-white'
-              }`}
+              key={cat.id}
+              onClick={() => { setActiveCategory(cat.id); playClick(); }}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activeCategory === cat.id ? 'bg-purple-600 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              {filter}
+              {cat.name}
             </motion.button>
           ))}
-        </motion.div>
+        </div>
 
         {/* Grid */}
-        <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" layout>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
-            {filteredItems.map((item, i) => (
+            {filteredItems.map((item, index) => (
               <motion.div
                 key={item.id}
                 layout
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: index * 0.1 }}
                 className="group relative aspect-square rounded-2xl overflow-hidden cursor-pointer"
-                onClick={() => { setSelectedItem(item); playGlitch(); }}
-                onMouseEnter={() => playWhoosh()}
+                onClick={() => { setSelectedItem(item); playPop(); }}
                 whileHover={{ scale: 1.02 }}
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-80`} />
-                <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors" />
-                
-                {/* Content */}
-                <div className="absolute inset-0 flex flex-col justify-end p-6">
-                  <motion.span 
-                    className="text-white/70 text-sm font-body capitalize mb-1"
-                    initial={{ y: 20, opacity: 0 }}
-                    whileInView={{ y: 0, opacity: 1 }}
-                  >
-                    {item.category}
-                  </motion.span>
-                  <h3 className="text-xl font-heading font-semibold text-white">
-                    {item.title}
-                  </h3>
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                  <h3 className="text-white font-bold text-lg">{item.title}</h3>
+                  <p className="text-gray-300 text-sm capitalize">{item.category}</p>
                 </div>
-
-                {/* Hover overlay */}
-                <motion.div
-                  className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <span className="px-6 py-3 glass rounded-full text-white font-body">
-                    Ver projeto
-                  </span>
-                </motion.div>
+                <div
+                  className="absolute top-4 right-4 w-3 h-3 rounded-full"
+                  style={{ backgroundColor: item.color, boxShadow: `0 0 10px ${item.color}` }}
+                />
               </motion.div>
             ))}
           </AnimatePresence>
-        </motion.div>
-      </div>
+        </div>
 
-      {/* Modal */}
-      <AnimatePresence>
-        {selectedItem && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSelectedItem(null)}
-          >
+        {/* Modal */}
+        <AnimatePresence>
+          {selectedItem && (
             <motion.div
-              className="glass rounded-3xl p-8 max-w-lg w-full"
-              initial={{ scale: 0.8, y: 50 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.8, y: 50 }}
-              onClick={e => e.stopPropagation()}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
             >
-              <div className={`aspect-video rounded-xl bg-gradient-to-br ${selectedItem.color} mb-6`} />
-              <span className="text-purple-400 text-sm capitalize">{selectedItem.category}</span>
-              <h3 className="text-2xl font-heading font-semibold text-white mt-1">{selectedItem.title}</h3>
-              <p className="text-white/60 font-body mt-3">
-                Uma criação que combina estética moderna com impacto visual. 
-                Feita pra chamar atenção e gerar engajamento.
-              </p>
-              <div className="flex gap-3 mt-6">
-                <motion.a
-                  href="#"
-                  className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-center font-heading text-white"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => playClick()}
-                >
-                  Quero um igual
-                </motion.a>
-                <motion.button
-                  onClick={() => { setSelectedItem(null); playClick(); }}
-                  className="px-6 py-3 glass rounded-full text-white/70 hover:text-white"
-                  whileHover={{ scale: 1.02 }}
-                >
-                  Fechar
-                </motion.button>
-              </div>
+              <motion.div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedItem(null)} />
+              <motion.div
+                className="relative bg-gray-900 rounded-3xl overflow-hidden max-w-2xl w-full"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+              >
+                <img src={selectedItem.image} alt={selectedItem.title} className="w-full aspect-video object-cover" />
+                <div className="p-6">
+                  <h3 className="text-2xl font-bold text-white mb-2">{selectedItem.title}</h3>
+                  <p className="text-gray-400 mb-6">Arte criada com muito carinho e criatividade. Esse projeto mostra todo o potencial do nosso trabalho.</p>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => { onOpenBudget(); setSelectedItem(null); }}
+                      className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-semibold text-white"
+                    >
+                      Quero um igual 🎨
+                    </button>
+                    <button
+                      onClick={() => setSelectedItem(null)}
+                      className="px-6 py-3 bg-white/10 rounded-xl text-white"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </div>
     </section>
   );
 };
 
-// ============ SERVICES SECTION ============
+// ==================== SERVICES SECTION ====================
 const services = [
-  { icon: '🎨', title: 'Identidade Visual', desc: 'Logo, cores, tipografia. Tudo pra sua marca ter cara própria.', power: 'Presença' },
-  { icon: '📱', title: 'Artes p/ Instagram', desc: 'Feed, Stories, Reels covers. Seu perfil vai ficar criminoso.', power: 'Engajamento' },
-  { icon: '🎬', title: 'Artes p/ TikTok', desc: 'Capas, thumbnails, identidade visual pra bombar.', power: 'Viralização' },
-  { icon: '📄', title: 'Flyers & Banners', desc: 'Eventos, promoções, lançamentos. Visual que converte.', power: 'Conversão' },
-  { icon: '💿', title: 'Capas & Thumbnails', desc: 'YouTube, Spotify, podcasts. Sua arte na capa.', power: 'Cliques' },
-  { icon: '✨', title: 'Motion Design', desc: 'Animações que dão vida às suas artes.', power: 'Impacto' },
-  { icon: '📦', title: 'Pacotes Mensais', desc: 'Artes ilimitadas* com atendimento VIP.', power: 'Economia' },
+  { icon: '🎨', title: 'Identidade Visual', desc: 'Logo + manual + papelaria', price: 'A partir de R$ 450' },
+  { icon: '📱', title: 'Artes p/ Instagram', desc: 'Feed, stories, destaques', price: 'A partir de R$ 35/arte' },
+  { icon: '🎬', title: 'Artes p/ TikTok', desc: 'Capas e thumbnails', price: 'A partir de R$ 30/arte' },
+  { icon: '🎉', title: 'Flyers & Banners', desc: 'Eventos e promoções', price: 'A partir de R$ 60' },
+  { icon: '🖼️', title: 'Capas & Thumbnails', desc: 'YouTube, Spotify, etc', price: 'A partir de R$ 80' },
+  { icon: '📦', title: 'Pacotes Mensais', desc: 'Gestão visual completa', price: 'A partir de R$ 280/mês' },
 ];
 
 const ServicesSection = () => {
-  const { playHover, playClick } = useApp();
+  const { playHover } = useSound();
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="serviços" ref={ref} className="py-20 md:py-32 px-4 relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-900/5 to-transparent" />
-      
-      <div className="max-w-7xl mx-auto relative z-10">
+    <section id="services" className="py-20 px-4 relative" data-tutorial-id="services" ref={ref}>
+      <div className="max-w-7xl mx-auto">
         <motion.div
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 30 }}
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: 50 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
         >
-          <span className="text-blue-400 font-body text-sm uppercase tracking-wider">Serviços</span>
-          <h2 className="text-4xl md:text-6xl font-display mt-2 text-white">
-            Menu de <span className="gradient-text">poderes</span>
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+            Nossos <span className="text-cyan-400">Poderes</span>
           </h2>
-          <p className="text-white/60 font-body mt-4">
-            Escolhe teu poder. A gente faz a mágica.
-          </p>
+          <p className="text-gray-400">Menu de arte pra deixar sua marca impossível de ignorar</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {services.map((service, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {services.map((service, index) => (
             <motion.div
-              key={i}
-              className="group glass rounded-2xl p-6 hover:bg-white/10 transition-all cursor-pointer"
+              key={index}
+              className="group p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:border-purple-500/50 transition-all"
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: i * 0.1 }}
-              whileHover={{ y: -5, scale: 1.02 }}
-              onMouseEnter={() => playHover()}
-              onClick={() => playClick()}
+              transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -5 }}
+              onMouseEnter={playHover}
             >
-              <motion.span 
-                className="text-4xl block mb-4"
-                whileHover={{ scale: 1.2, rotate: 10 }}
-              >
-                {service.icon}
-              </motion.span>
-              
-              <h3 className="text-xl font-heading font-semibold text-white mb-2">
-                {service.title}
-              </h3>
-              
-              <p className="text-white/60 font-body text-sm mb-4">
-                {service.desc}
-              </p>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-body text-purple-400 glass px-3 py-1 rounded-full">
-                  +{service.power}
-                </span>
-                <motion.span
-                  className="text-white/50 group-hover:text-white transition-colors"
-                  whileHover={{ x: 5 }}
-                >
-                  →
-                </motion.span>
-              </div>
+              <div className="text-4xl mb-4">{service.icon}</div>
+              <h3 className="text-xl font-bold text-white mb-2">{service.title}</h3>
+              <p className="text-gray-400 text-sm mb-4">{service.desc}</p>
+              <p className="text-purple-400 font-semibold">{service.price}</p>
             </motion.div>
           ))}
         </div>
@@ -684,159 +594,102 @@ const ServicesSection = () => {
   );
 };
 
-// ============ STYLE PICKER SECTION ============
-const styles = [
-  { id: 'minimal', name: 'Minimalista', colors: ['#ffffff', '#000000', '#888888'], preview: 'bg-gradient-to-br from-white to-gray-200' },
-  { id: 'neon', name: 'Neon Futurista', colors: ['#a855f7', '#3b82f6', '#22d3ee'], preview: 'bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-500' },
-  { id: 'street', name: 'Street / Urbano', colors: ['#f97316', '#fbbf24', '#1a1a1a'], preview: 'bg-gradient-to-br from-orange-500 via-yellow-500 to-black' },
-  { id: 'luxury', name: 'Luxo / Premium', colors: ['#d4af37', '#1a1a1a', '#f5f5f5'], preview: 'bg-gradient-to-br from-yellow-600 via-black to-gray-100' },
-  { id: 'cute', name: 'Cute / Pastel', colors: ['#f9a8d4', '#a78bfa', '#67e8f9'], preview: 'bg-gradient-to-br from-pink-300 via-purple-300 to-cyan-300' },
+// ==================== STYLES SECTION ====================
+const stylesOptions = [
+  { id: 'minimal', name: 'Minimalista', color: 'from-gray-400 to-gray-600', bg: 'bg-gray-800' },
+  { id: 'neon', name: 'Neon Futurista', color: 'from-purple-500 to-pink-500', bg: 'bg-purple-900' },
+  { id: 'street', name: 'Street / Urbano', color: 'from-orange-500 to-red-500', bg: 'bg-orange-900' },
+  { id: 'luxury', name: 'Luxo / Premium', color: 'from-amber-400 to-yellow-600', bg: 'bg-amber-900' },
+  { id: 'cute', name: 'Cute / Pastel', color: 'from-pink-300 to-purple-300', bg: 'bg-pink-900' },
 ];
 
-const StylePickerSection = () => {
-  const { styleTheme, setStyleTheme, playPop, playGlitch } = useApp();
+const StylesSection = () => {
+  const [activeStyle, setActiveStyle] = useState('neon');
+  const { playPop } = useSound();
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="estilos" ref={ref} className="py-20 md:py-32 px-4 relative overflow-hidden">
-      <div className="max-w-5xl mx-auto">
+    <section className="py-20 px-4 relative" data-tutorial-id="styles" ref={ref}>
+      <div className="max-w-4xl mx-auto text-center">
         <motion.div
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 50 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
         >
-          <span className="text-cyan-400 font-body text-sm uppercase tracking-wider">Experiência</span>
-          <h2 className="text-4xl md:text-6xl font-display mt-2 text-white">
-            Qual é o seu <span className="gradient-text">estilo</span>?
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+            Escolha seu <span className="text-pink-400">Estilo</span>
           </h2>
-          <p className="text-white/60 font-body mt-4">
-            Clica e vê a vibe mudar em tempo real ✨
-          </p>
+          <p className="text-gray-400 mb-12">Clica e vê a mágica acontecer ✨</p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {styles.map((style, i) => (
+        <div className="flex flex-wrap justify-center gap-4 mb-12">
+          {stylesOptions.map((style) => (
             <motion.button
               key={style.id}
-              className={`relative aspect-square rounded-2xl overflow-hidden ${
-                styleTheme === style.id ? 'ring-4 ring-white' : ''
-              }`}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={isInView ? { opacity: 1, scale: 1 } : {}}
-              transition={{ delay: i * 0.1 }}
+              onClick={() => { setActiveStyle(style.id); playPop(); }}
+              className={`px-6 py-3 rounded-full font-medium transition-all ${activeStyle === style.id ? `bg-gradient-to-r ${style.color} text-white` : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => { setStyleTheme(style.id); playPop(); playGlitch(); }}
             >
-              <div className={`absolute inset-0 ${style.preview}`} />
-              <div className="absolute inset-0 bg-black/30 flex items-end p-4">
-                <span className="text-white font-heading font-semibold text-sm">
-                  {style.name}
-                </span>
-              </div>
-              
-              {styleTheme === style.id && (
-                <motion.div
-                  className="absolute top-3 right-3 w-6 h-6 bg-white rounded-full flex items-center justify-center"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                >
-                  <span className="text-purple-600">✓</span>
-                </motion.div>
-              )}
+              {style.name}
             </motion.button>
           ))}
         </div>
 
         <motion.div
-          className="mt-12 text-center"
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : {}}
-          transition={{ delay: 0.5 }}
+          className={`p-8 rounded-3xl transition-all duration-500 ${stylesOptions.find(s => s.id === activeStyle)?.bg || 'bg-purple-900'}`}
+          layout
         >
-          <p className="text-white/50 font-body text-sm">
-            Estilo selecionado: <span className="text-white">{styles.find(s => s.id === styleTheme)?.name}</span>
-          </p>
+          <div className={`h-2 w-full rounded-full bg-gradient-to-r ${stylesOptions.find(s => s.id === activeStyle)?.color || ''} mb-6`} />
+          <p className="text-white text-xl font-bold mb-2">Preview: {stylesOptions.find(s => s.id === activeStyle)?.name}</p>
+          <p className="text-white/70">Essa é a vibe que você escolheu! Agora imagina isso no seu feed... 🔥</p>
         </motion.div>
       </div>
     </section>
   );
 };
 
-// ============ TESTIMONIALS SECTION ============
+// ==================== TESTIMONIALS SECTION ====================
 const testimonials = [
-  { name: 'Marina @marinafit', msg: 'GENTE eu tô passada com o feed novo!! Triplicou meu engajamento 😭🔥', stars: 5, emoji: '💪' },
-  { name: 'Lucas Beats', msg: 'Nunca vi uma capa de EP tão insana. O povo só elogia', stars: 5, emoji: '🎵' },
-  { name: 'Café Artístico', msg: 'Nossa identidade visual ficou PERFEITA. Clientes novos todo dia', stars: 5, emoji: '☕' },
-  { name: 'DJ Neon', msg: 'Os flyers dos meus eventos viraram referência. Valeu demais!', stars: 5, emoji: '🎧' },
+  { name: 'Mari', handle: '@marifit', msg: 'Meu feed nunca ficou tão lindo! 😍 Já recebi 3 parcerias depois das artes novas', time: '14:32' },
+  { name: 'Lucas', handle: '@lucasdj', msg: 'Flyer do meu evento bombou demais! Esgotou em 2 dias 🎉', time: '09:15' },
+  { name: 'Café Central', handle: '@cafecentral', msg: 'A identidade visual ficou PERFEITA. Valeu cada centavo!', time: '16:48' },
+  { name: 'Ana', handle: '@anashop', msg: 'Finalmente achei alguém que entende o que eu quero! 10/10', time: '11:20' },
 ];
 
 const TestimonialsSection = () => {
-  const { playHover } = useApp();
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="depoimentos" ref={ref} className="py-20 md:py-32 px-4">
-      <div className="max-w-5xl mx-auto">
+    <section className="py-20 px-4 relative" data-tutorial-id="testimonials" ref={ref}>
+      <div className="max-w-4xl mx-auto">
         <motion.div
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 30 }}
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: 50 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
         >
-          <span className="text-pink-400 font-body text-sm uppercase tracking-wider">Depoimentos</span>
-          <h2 className="text-4xl md:text-6xl font-display mt-2 text-white">
-            O que tão <span className="gradient-text">falando</span>
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+            O que <span className="text-green-400">falam</span> da gente
           </h2>
+          <p className="text-gray-400">Direto do zap dos clientes 📱</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
           {testimonials.map((t, i) => (
             <motion.div
               key={i}
-              className="glass rounded-2xl p-6"
-              initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }}
+              className="flex justify-end"
+              initial={{ opacity: 0, x: 50 }}
               animate={isInView ? { opacity: 1, x: 0 } : {}}
               transition={{ delay: i * 0.15 }}
-              whileHover={{ scale: 1.02 }}
-              onMouseEnter={() => playHover()}
             >
-              {/* Chat bubble style */}
-              <div className="flex gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-2xl">
-                  {t.emoji}
+              <div className="bg-green-600 rounded-2xl rounded-br-md p-4 max-w-md">
+                <p className="text-white mb-2">{t.msg}</p>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-green-200">{t.name} • {t.handle}</span>
+                  <span className="text-green-200">{t.time} ✓✓</span>
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-heading font-semibold text-white">{t.name}</span>
-                    <div className="flex text-yellow-400">
-                      {[...Array(t.stars)].map((_, j) => (
-                        <Icons.Star key={j} />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-white/80 font-body bg-white/5 rounded-2xl rounded-tl-none p-4">
-                    {t.msg}
-                  </p>
-                </div>
-              </div>
-              
-              {/* Audio visual fake */}
-              <div className="flex items-center gap-2 mt-4 ml-16 text-white/30">
-                <Icons.Play />
-                <div className="flex gap-0.5">
-                  {[...Array(20)].map((_, j) => (
-                    <motion.div
-                      key={j}
-                      className="w-1 bg-purple-500/50 rounded-full"
-                      style={{ height: `${8 + Math.random() * 16}px` }}
-                      animate={{ height: [`${8 + Math.random() * 16}px`, `${8 + Math.random() * 16}px`] }}
-                      transition={{ duration: 0.5, repeat: Infinity }}
-                    />
-                  ))}
-                </div>
-                <span className="text-xs">0:12</span>
               </div>
             </motion.div>
           ))}
@@ -846,65 +699,41 @@ const TestimonialsSection = () => {
   );
 };
 
-// ============ ABOUT SECTION ============
+// ==================== ABOUT SECTION ====================
 const AboutSection = () => {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="sobre" ref={ref} className="py-20 md:py-32 px-4 relative">
-      <div className="absolute inset-0 bg-gradient-to-t from-purple-900/10 to-transparent" />
-      
-      <div className="max-w-4xl mx-auto relative z-10">
+    <section className="py-20 px-4 relative" ref={ref}>
+      <div className="max-w-4xl mx-auto text-center">
         <motion.div
-          className="text-center"
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 50 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
         >
-          <motion.div
-            className="w-24 h-24 mx-auto mb-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center"
-            whileHover={{ scale: 1.1, rotate: 10 }}
-          >
-            <Icons.Sparkles />
-          </motion.div>
-
-          <h2 className="text-4xl md:text-5xl font-display text-white mb-8">
-            A gente não faz <span className="gradient-text">só arte</span>.
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-8">
+            Sobre a <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">VAI UMA ARTE AÊ?!</span>
           </h2>
 
-          <div className="space-y-4 text-xl md:text-2xl font-body text-white/70">
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: 0.2 }}
-            >
-              A gente cria <span className="text-white">presença</span>.
-            </motion.p>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: 0.4 }}
-            >
-              Aquela que faz a pessoa <span className="text-purple-400">parar o scroll</span>.
-            </motion.p>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: 0.6 }}
-            >
-              Aquela que faz sua marca ser <span className="text-blue-400">impossível de ignorar</span>.
-            </motion.p>
+          <div className="text-xl text-gray-300 space-y-4 leading-relaxed">
+            <p>A gente não faz só arte.</p>
+            <p className="text-purple-400 font-bold text-2xl">A gente cria presença.</p>
+            <p>Aquela que faz a pessoa parar o scroll.</p>
+            <p>Aquela que transforma seguidor em cliente.</p>
+            <p className="text-cyan-400">Aquela que deixa a concorrência no vácuo.</p>
           </div>
 
           <motion.div
-            className="mt-12 flex flex-wrap justify-center gap-4 text-sm font-body text-white/50"
-            initial={{ opacity: 0 }}
-            animate={isInView ? { opacity: 1 } : {}}
-            transition={{ delay: 0.8 }}
+            className="mt-12 inline-flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10"
+            whileHover={{ scale: 1.02 }}
           >
-            {['100+ projetos', '50+ clientes felizes', '3 anos de mercado', '∞ criatividade'].map((stat, i) => (
-              <span key={i} className="glass px-4 py-2 rounded-full">{stat}</span>
-            ))}
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-2xl">
+              🎨
+            </div>
+            <div className="text-left">
+              <p className="text-white font-bold">+500 artes entregues</p>
+              <p className="text-gray-400 text-sm">e contando...</p>
+            </div>
           </motion.div>
         </motion.div>
       </div>
@@ -912,346 +741,555 @@ const AboutSection = () => {
   );
 };
 
-// ============ CTA SECTION ============
-const CTASection = () => {
-  const { playPop, playWhoosh } = useApp();
+// ==================== CTA SECTION ====================
+const CTASection = ({ onOpenBudget }: { onOpenBudget: () => void }) => {
+  const { playWhoosh } = useSound();
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section ref={ref} className="py-20 md:py-32 px-4 relative overflow-hidden">
-      {/* Background effects */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-900/30 via-transparent to-blue-900/30" />
+    <section className="py-20 px-4 relative" ref={ref}>
+      <div className="max-w-4xl mx-auto text-center">
         <motion.div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.2, 1] }}
-          transition={{ duration: 4, repeat: Infinity }}
-        />
-      </div>
-
-      <div className="max-w-4xl mx-auto text-center relative z-10">
-        <motion.h2
-          className="text-4xl md:text-6xl lg:text-7xl font-display text-white mb-6"
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={isInView ? { opacity: 1, scale: 1 } : {}}
+          className="p-12 bg-gradient-to-br from-purple-900/50 to-pink-900/50 rounded-3xl border border-purple-500/20"
         >
-          Bora deixar sua marca{' '}
-          <span className="gradient-text glow-text">impossível de ignorar</span>?
-        </motion.h2>
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
+            Bora deixar sua marca<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">impossível de ignorar?</span>
+          </h2>
 
-        <motion.p
-          className="text-xl text-white/60 font-body mb-12"
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ delay: 0.2 }}
-        >
-          Vai uma arte aê?! 🎨
-        </motion.p>
+          <p className="text-xl text-gray-300 mb-8">Vai uma arte aê?! 🎨</p>
 
-        <motion.div
-          className="flex flex-col sm:flex-row gap-4 justify-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ delay: 0.4 }}
-        >
-          <motion.a
-            href="https://wa.me/5500000000000"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-3 px-8 py-4 bg-green-500 hover:bg-green-600 rounded-full font-heading font-semibold text-white transition-colors"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onHoverStart={() => playWhoosh()}
-            onClick={() => playPop()}
-          >
-            <Icons.WhatsApp />
-            Chamar no WhatsApp
-          </motion.a>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <motion.button
+              onClick={() => { onOpenBudget(); playWhoosh(); }}
+              className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-white font-bold text-lg"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Simular orçamento 💰
+            </motion.button>
 
-          <motion.a
-            href="https://instagram.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full font-heading font-semibold text-white"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onHoverStart={() => playWhoosh()}
-            onClick={() => playPop()}
-          >
-            <Icons.Instagram />
-            Seguir no Instagram
-          </motion.a>
+            <motion.a
+              href="https://wa.me/5500000000000"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-8 py-4 bg-green-600 rounded-full text-white font-bold text-lg flex items-center justify-center gap-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              Chamar no WhatsApp
+            </motion.a>
+
+            <motion.a
+              href="https://www.instagram.com/vaiumaarteaeofc?igsh=MXVtM3pjN3dtYWJyOQ=="
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-8 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 rounded-full text-white font-bold text-lg flex items-center justify-center gap-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+              Instagram
+            </motion.a>
+          </div>
         </motion.div>
       </div>
     </section>
   );
 };
 
-// ============ FOOTER ============
-const Footer = () => {
+// ==================== BUDGET SIMULATOR ====================
+const BudgetSimulator = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  const [step, setStep] = useState(1);
+  const [services, setServices] = useState<string[]>([]);
+  const [style, setStyle] = useState('neon');
+  const [quantity, setQuantity] = useState('1-3');
+  const [urgency, setUrgency] = useState('normal');
+  const [extras, setExtras] = useState<string[]>([]);
+  const [name, setName] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const { playPop, playWhoosh } = useSound();
+
+  const servicesList = [
+    { id: 'identidade', name: 'Identidade Visual', price: 450 },
+    { id: 'instagram', name: 'Artes p/ Instagram', price: 35 },
+    { id: 'tiktok', name: 'Artes p/ TikTok', price: 30 },
+    { id: 'flyers', name: 'Flyers & Banners', price: 60 },
+    { id: 'capas', name: 'Capas & Thumbnails', price: 80 },
+    { id: 'kit', name: 'Kit Redes Sociais', price: 280 },
+  ];
+
+  const stylesList = [
+    { id: 'minimal', name: 'Minimalista', mult: 1 },
+    { id: 'neon', name: 'Neon Futurista', mult: 1.15 },
+    { id: 'street', name: 'Street / Urbano', mult: 1.1 },
+    { id: 'luxury', name: 'Luxo / Premium', mult: 1.25 },
+    { id: 'cute', name: 'Cute / Pastel', mult: 1.05 },
+  ];
+
+  const extrasList = [
+    { id: 'fonte', name: 'Arquivo fonte', price: 50 },
+    { id: 'variacoes', name: 'Variações extras', price: 40 },
+    { id: 'mockups', name: 'Mockups profissionais', price: 35 },
+    { id: 'manual', name: 'Manual de marca', price: 120 },
+  ];
+
+  const calculatePrice = () => {
+    let base = services.reduce((acc, s) => {
+      const service = servicesList.find(sv => sv.id === s);
+      return acc + (service?.price || 0);
+    }, 0);
+
+    const styleMult = stylesList.find(s => s.id === style)?.mult || 1;
+    base *= styleMult;
+
+    const qtyMultipliers: Record<string, number> = { '1-3': 1, '4-10': 0.9, '11-20': 0.85, '20+': 0.75 };
+    base *= qtyMultipliers[quantity] || 1;
+
+    const urgencyMultipliers: Record<string, number> = { normal: 1, rapido: 1.3, urgente: 1.6 };
+    base *= urgencyMultipliers[urgency] || 1;
+
+    const extrasTotal = extras.reduce((acc, e) => {
+      const extra = extrasList.find(ex => ex.id === e);
+      return acc + (extra?.price || 0);
+    }, 0);
+
+    return Math.round(base + extrasTotal);
+  };
+
+  const handleSubmit = () => {
+    playWhoosh();
+    setSubmitted(true);
+  };
+
+  const resetForm = () => {
+    setStep(1);
+    setServices([]);
+    setStyle('neon');
+    setQuantity('1-3');
+    setUrgency('normal');
+    setExtras([]);
+    setName('');
+    setWhatsapp('');
+    setEmail('');
+    setSubmitted(false);
+  };
+
+  if (!isOpen) return null;
+
   return (
-    <footer className="py-8 px-4 border-t border-white/10">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-        <span className="font-display text-xl gradient-text">VAI UMA ARTE AÊ?!</span>
-        <p className="text-white/40 font-body text-sm">
-          © 2024 - Feito com 💜 e muito café
-        </p>
-        <div className="flex gap-4">
-          <a href="#" className="text-white/40 hover:text-white transition-colors">
-            <Icons.Instagram />
-          </a>
-          <a href="#" className="text-white/40 hover:text-white transition-colors">
-            <Icons.WhatsApp />
-          </a>
-        </div>
-      </div>
-    </footer>
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+
+        <motion.div
+          className="relative w-full max-w-2xl max-h-[90vh] bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-purple-500/20 overflow-hidden flex flex-col"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+        >
+          {/* Header */}
+          <div className="p-6 border-b border-white/10 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white">Simulador de Orçamento</h2>
+              <p className="text-gray-400 text-sm">Etapa {step} de 5</p>
+            </div>
+            <button
+              onClick={() => { onClose(); resetForm(); }}
+              className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"
+            >
+              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Progress */}
+          <div className="px-6 py-4">
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-purple-600 to-pink-600"
+                initial={{ width: 0 }}
+                animate={{ width: `${(step / 5) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 custom-scroll">
+            {submitted ? (
+              <motion.div className="text-center py-12" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
+                <div className="text-6xl mb-6">🎉</div>
+                <h3 className="text-2xl font-bold text-white mb-4">Orçamento enviado!</h3>
+                <p className="text-gray-400 mb-6">Vamos entrar em contato em breve!</p>
+                <p className="text-3xl font-bold text-purple-400 mb-8">
+                  Valor estimado: R$ {calculatePrice().toLocaleString('pt-BR')}
+                </p>
+                <button
+                  onClick={() => { onClose(); resetForm(); }}
+                  className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-white font-bold"
+                >
+                  Fechar
+                </button>
+              </motion.div>
+            ) : (
+              <>
+                {/* Step 1: Services */}
+                {step === 1 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-bold text-white mb-4">Quais serviços você precisa?</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {servicesList.map((service) => (
+                        <button
+                          key={service.id}
+                          onClick={() => {
+                            playPop();
+                            setServices(services.includes(service.id)
+                              ? services.filter(s => s !== service.id)
+                              : [...services, service.id]
+                            );
+                          }}
+                          className={`p-4 rounded-xl border-2 text-left transition-all ${
+                            services.includes(service.id)
+                              ? 'border-purple-500 bg-purple-500/20'
+                              : 'border-white/10 bg-white/5 hover:border-white/20'
+                          }`}
+                        >
+                          <p className="text-white font-medium">{service.name}</p>
+                          <p className="text-purple-400 text-sm">R$ {service.price}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Style */}
+                {step === 2 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-bold text-white mb-4">Qual estilo você prefere?</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {stylesList.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => { setStyle(s.id); playPop(); }}
+                          className={`p-4 rounded-xl border-2 text-left transition-all ${
+                            style === s.id
+                              ? 'border-purple-500 bg-purple-500/20'
+                              : 'border-white/10 bg-white/5 hover:border-white/20'
+                          }`}
+                        >
+                          <p className="text-white font-medium">{s.name}</p>
+                          {s.mult > 1 && <p className="text-amber-400 text-sm">+{Math.round((s.mult - 1) * 100)}%</p>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Details */}
+                {step === 3 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-4">Quantidade de artes</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {['1-3', '4-10', '11-20', '20+'].map((q) => (
+                          <button
+                            key={q}
+                            onClick={() => { setQuantity(q); playPop(); }}
+                            className={`p-3 rounded-xl border-2 text-center transition-all ${
+                              quantity === q
+                                ? 'border-purple-500 bg-purple-500/20'
+                                : 'border-white/10 bg-white/5'
+                            }`}
+                          >
+                            <p className="text-white font-medium">{q}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-4">Urgência</h3>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { id: 'normal', name: 'Normal', desc: '5-7 dias' },
+                          { id: 'rapido', name: 'Rápido', desc: '2-3 dias (+30%)' },
+                          { id: 'urgente', name: 'Urgente', desc: '24h (+60%)' },
+                        ].map((u) => (
+                          <button
+                            key={u.id}
+                            onClick={() => { setUrgency(u.id); playPop(); }}
+                            className={`p-3 rounded-xl border-2 text-center transition-all ${
+                              urgency === u.id
+                                ? 'border-purple-500 bg-purple-500/20'
+                                : 'border-white/10 bg-white/5'
+                            }`}
+                          >
+                            <p className="text-white font-medium text-sm">{u.name}</p>
+                            <p className="text-gray-400 text-xs">{u.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 4: Extras */}
+                {step === 4 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-bold text-white mb-4">Extras (opcional)</h3>
+                    <div className="space-y-3">
+                      {extrasList.map((extra) => (
+                        <button
+                          key={extra.id}
+                          onClick={() => {
+                            playPop();
+                            setExtras(extras.includes(extra.id)
+                              ? extras.filter(e => e !== extra.id)
+                              : [...extras, extra.id]
+                            );
+                          }}
+                          className={`w-full p-4 rounded-xl border-2 text-left transition-all flex justify-between items-center ${
+                            extras.includes(extra.id)
+                              ? 'border-purple-500 bg-purple-500/20'
+                              : 'border-white/10 bg-white/5'
+                          }`}
+                        >
+                          <span className="text-white">{extra.name}</span>
+                          <span className="text-green-400">+R$ {extra.price}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 5: Contact */}
+                {step === 5 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-bold text-white mb-4">Seus dados</h3>
+
+                    <div className="p-4 bg-purple-500/20 rounded-xl border border-purple-500/30 mb-6">
+                      <p className="text-purple-300 text-sm">Valor estimado:</p>
+                      <p className="text-3xl font-bold text-white">R$ {calculatePrice().toLocaleString('pt-BR')}</p>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Seu nome"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
+                    />
+                    <input
+                      type="tel"
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      placeholder="WhatsApp"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
+                    />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Email"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Footer */}
+          {!submitted && (
+            <div className="p-6 border-t border-white/10 flex justify-between">
+              {step > 1 ? (
+                <button
+                  onClick={() => setStep(step - 1)}
+                  className="px-6 py-3 bg-white/10 rounded-xl text-white"
+                >
+                  Voltar
+                </button>
+              ) : (
+                <div />
+              )}
+
+              {step < 5 ? (
+                <button
+                  onClick={() => { setStep(step + 1); playWhoosh(); }}
+                  disabled={step === 1 && services.length === 0}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-medium disabled:opacity-50"
+                >
+                  Próximo
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={!name || !whatsapp}
+                  className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white font-medium disabled:opacity-50"
+                >
+                  Enviar orçamento 🚀
+                </button>
+              )}
+            </div>
+          )}
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
-// ============ MAGIC BUTTON ============
-const MagicButton = () => {
+// ==================== MAGIC BUTTON ====================
+const MagicButton = ({ onOpenBudget }: { onOpenBudget: () => void }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { playPop, playGlitch, playClick } = useApp();
+  const { playPop, playWhoosh } = useSound();
 
   const menuItems = [
-    { icon: '💰', label: 'Pedir orçamento', href: '#' },
-    { icon: '🎨', label: 'Ver portfólio', href: '#portfólio' },
-    { icon: <Icons.WhatsApp />, label: 'WhatsApp', href: 'https://wa.me/5500000000000' },
-    { icon: <Icons.Instagram />, label: 'Instagram', href: 'https://instagram.com' },
+    { icon: '💰', label: 'Pedir orçamento', action: () => { onOpenBudget(); setIsOpen(false); } },
+    { icon: '🎨', label: 'Ver portfólio', href: '#portfolio' },
+    { icon: '💬', label: 'WhatsApp', href: 'https://wa.me/5500000000000' },
+    { icon: '📸', label: 'Instagram', href: 'https://www.instagram.com/vaiumaarteaeofc?igsh=MXVtM3pjN3dtYWJyOQ==' },
   ];
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-6 right-6 z-50" id="magic-button">
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="absolute bottom-16 right-0 w-48"
-            initial={{ opacity: 0, y: 20, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.8 }}
-          >
-            {menuItems.map((item, i) => (
-              <motion.a
-                key={i}
-                href={item.href}
-                className="flex items-center gap-3 px-4 py-3 mb-2 glass rounded-xl text-white hover:bg-white/10 transition-colors"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ x: -5 }}
-                onClick={() => playClick()}
-              >
-                <span className="text-lg">{typeof item.icon === 'string' ? item.icon : item.icon}</span>
-                <span className="font-body text-sm">{item.label}</span>
-              </motion.a>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <motion.button
-        className="relative w-16 h-16 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg glow-purple"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => {
-          setIsOpen(!isOpen);
-          playPop();
-          if (!isOpen) playGlitch();
-        }}
-        animate={isOpen ? {} : {
-          scale: [1, 1.05, 1],
-        }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        <motion.span
-          className="absolute inset-0 flex items-center justify-center text-2xl"
-          animate={{ rotate: isOpen ? 45 : 0 }}
-        >
-          {isOpen ? '✕' : '🎨'}
-        </motion.span>
-        
-        {/* Pulse ring */}
-        {!isOpen && (
-          <motion.div
-            className="absolute inset-0 rounded-full border-2 border-purple-400"
-            animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          />
-        )}
-      </motion.button>
-
-      {/* Label */}
-      {!isOpen && (
-        <motion.span
-          className="absolute -left-32 top-1/2 -translate-y-1/2 px-3 py-1 glass rounded-full text-sm font-body text-white whitespace-nowrap"
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 1 }}
-        >
-          Vai uma arte aê?!
-        </motion.span>
-      )}
-    </div>
-  );
-};
-
-// ============ ACCESSIBILITY PANEL ============
-const AccessibilityPanel = () => {
-  const { reducedMotion, toggleReducedMotion, highContrast, toggleHighContrast, playClick } = useApp();
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="fixed bottom-6 left-6 z-50">
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            className="absolute bottom-14 left-0 w-56 glass rounded-xl p-4"
+            className="absolute bottom-16 right-0 space-y-2"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
           >
-            <h3 className="text-white font-heading font-semibold mb-4">Acessibilidade</h3>
-            
-            <label className="flex items-center justify-between mb-3 cursor-pointer">
-              <span className="text-white/70 font-body text-sm">Reduzir movimento</span>
-              <button
-                onClick={() => { toggleReducedMotion(); playClick(); }}
-                className={`w-10 h-6 rounded-full transition-colors ${
-                  reducedMotion ? 'bg-purple-500' : 'bg-white/20'
-                }`}
-              >
-                <motion.div
-                  className="w-4 h-4 bg-white rounded-full m-1"
-                  animate={{ x: reducedMotion ? 16 : 0 }}
-                />
-              </button>
-            </label>
-            
-            <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-white/70 font-body text-sm">Alto contraste</span>
-              <button
-                onClick={() => { toggleHighContrast(); playClick(); }}
-                className={`w-10 h-6 rounded-full transition-colors ${
-                  highContrast ? 'bg-purple-500' : 'bg-white/20'
-                }`}
-              >
-                <motion.div
-                  className="w-4 h-4 bg-white rounded-full m-1"
-                  animate={{ x: highContrast ? 16 : 0 }}
-                />
-              </button>
-            </label>
+            {menuItems.map((item, i) => (
+              item.action ? (
+                <motion.button
+                  key={i}
+                  onClick={() => { item.action(); playPop(); }}
+                  className="flex items-center gap-3 px-4 py-2 bg-gray-900/90 backdrop-blur-sm rounded-full border border-white/10 hover:border-purple-500/50 transition-all whitespace-nowrap"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <span>{item.icon}</span>
+                  <span className="text-white text-sm">{item.label}</span>
+                </motion.button>
+              ) : (
+                <motion.a
+                  key={i}
+                  href={item.href}
+                  target={item.href?.startsWith('http') ? '_blank' : undefined}
+                  rel={item.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  onClick={() => { setIsOpen(false); playPop(); }}
+                  className="flex items-center gap-3 px-4 py-2 bg-gray-900/90 backdrop-blur-sm rounded-full border border-white/10 hover:border-purple-500/50 transition-all whitespace-nowrap"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <span>{item.icon}</span>
+                  <span className="text-white text-sm">{item.label}</span>
+                </motion.a>
+              )
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
 
       <motion.button
-        className="w-12 h-12 rounded-full glass text-white/70 hover:text-white hover:bg-white/10 transition-colors flex items-center justify-center"
+        onClick={() => { setIsOpen(!isOpen); playWhoosh(); }}
+        className="w-14 h-14 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/30"
         whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => { setIsOpen(!isOpen); playClick(); }}
-        aria-label="Acessibilidade"
-      >
-        <Icons.Accessibility />
-      </motion.button>
-    </div>
-  );
-};
-
-// ============ SOUND PROMPT ============
-const SoundPrompt = () => {
-  const { soundEnabled, toggleSound, playPop } = useApp();
-  const [dismissed, setDismissed] = useState(false);
-
-  if (soundEnabled || dismissed) return null;
-
-  return (
-    <motion.div
-      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
-      transition={{ delay: 2 }}
-    >
-      <motion.button
-        className="flex items-center gap-2 px-6 py-3 glass rounded-full text-white font-body hover:bg-white/10 transition-colors"
-        whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => {
-          toggleSound();
-          playPop();
-          setDismissed(true);
-        }}
+        animate={{ rotate: isOpen ? 45 : 0 }}
       >
-        <span>🎧</span>
-        Ativar experiência sonora
+        <span className="text-2xl">{isOpen ? '✕' : '🎨'}</span>
       </motion.button>
-      
-      <button
-        className="absolute -top-2 -right-2 w-6 h-6 bg-white/20 rounded-full text-white text-xs hover:bg-white/30"
-        onClick={() => setDismissed(true)}
-        aria-label="Fechar"
-      >
-        ✕
-      </button>
-    </motion.div>
-  );
-};
-
-// ============ MAIN APP ============
-const MainApp = () => {
-  const [loading, setLoading] = useState(true);
-  const { isDarkMode, reducedMotion, highContrast } = useApp();
-
-  return (
-    <div 
-      className={`min-h-screen ${
-        isDarkMode ? 'bg-[#0a0a0f] text-white' : 'bg-slate-50 text-slate-900 light-mode'
-      } ${reducedMotion ? 'reduced-motion' : ''} ${highContrast ? 'high-contrast' : ''}`}
-    >
-      {/* Grain overlay */}
-      <div className="grain" />
-      
-      {/* Particles */}
-      <ParticlesBackground />
-
-      <AnimatePresence mode="wait">
-        {loading ? (
-          <Loader key="loader" onComplete={() => setLoading(false)} />
-        ) : (
-          <motion.div
-            key="content"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Header />
-            <main>
-              <HeroSection />
-              <PortfolioSection />
-              <ServicesSection />
-              <StylePickerSection />
-              <TestimonialsSection />
-              <AboutSection />
-              <CTASection />
-            </main>
-            <Footer />
-            <MagicButton />
-            <AccessibilityPanel />
-            <SoundPrompt />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
 
+// ==================== FOOTER ====================
+const Footer = () => (
+  <footer className="py-8 px-4 border-t border-white/10">
+    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p className="text-gray-400 text-sm">
+        © 2024 VAI UMA ARTE AÊ?! — Todos os direitos reservados
+      </p>
+      <div className="flex items-center gap-4">
+        <a
+          href="https://www.instagram.com/vaiumaarteaeofc?igsh=MXVtM3pjN3dtYWJyOQ=="
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-gray-400 hover:text-white transition-colors"
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+        </a>
+      </div>
+    </div>
+  </footer>
+);
+
+// ==================== MAIN APP ====================
+const MainApp = () => {
+  const [showBudget, setShowBudget] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const { user } = useAuth();
+
+  const handleOpenAuth = () => {
+    if (user) {
+      setShowProfile(true);
+    } else {
+      setShowAuth(true);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-white overflow-x-hidden">
+      <Particles />
+      <Header onOpenAuth={handleOpenAuth} />
+
+      <main>
+        <HeroSection onOpenBudget={() => setShowBudget(true)} />
+        <PortfolioSection onOpenBudget={() => setShowBudget(true)} />
+        <ServicesSection />
+        <StylesSection />
+        <TestimonialsSection />
+        <AboutSection />
+        <CTASection onOpenBudget={() => setShowBudget(true)} />
+      </main>
+
+      <Footer />
+      <MagicButton onOpenBudget={() => setShowBudget(true)} />
+      <BudgetSimulator isOpen={showBudget} onClose={() => setShowBudget(false)} />
+      <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} />
+      <UserProfile isOpen={showProfile} onClose={() => setShowProfile(false)} />
+    </div>
+  );
+};
+
+// ==================== APP ====================
 export function App() {
   return (
-    <AppProvider>
-      <MainApp />
-    </AppProvider>
+    <AuthProvider>
+      <SoundProvider>
+        <AccessibilityProvider>
+          <MainApp />
+        </AccessibilityProvider>
+      </SoundProvider>
+    </AuthProvider>
   );
 }
+
+export default App;
