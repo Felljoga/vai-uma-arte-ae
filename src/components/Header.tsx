@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Sparkles, User, LogOut, Users, Shield } from 'lucide-react';
+import { Menu, X, Sparkles, User, LogOut, Users, Shield, Instagram } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserRole, hasPermission, type UserRole } from '@/services/admin';
 import { UserAvatarWithFrame } from './UserBadge';
@@ -92,6 +92,19 @@ export function Header({ onOpenAuth, onOpenDashboard, onOpenForum, onOpenAdmin }
 
             {/* Auth Section */}
             <div className="hidden lg:flex items-center gap-3">
+              {/* Instagram Link */}
+              <motion.a
+                href="https://www.instagram.com/vaiumaarteaeofc?igsh=MXVtM3pjN3dtYWJyOQ=="
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 text-white hover:opacity-90 transition-opacity"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                title="Siga-nos no Instagram"
+              >
+                <Instagram className="w-5 h-5" />
+              </motion.a>
+              
               {currentUser ? (
                 <div className="flex items-center gap-3">
                   {/* Admin Button */}

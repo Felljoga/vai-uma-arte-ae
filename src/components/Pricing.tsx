@@ -1,234 +1,389 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Star, Zap, Crown, Building2, ArrowRight } from 'lucide-react';
+import { Check, Sparkles, Zap, Crown, Building2, X, ExternalLink, Copy, CheckCircle, AlertCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { PLANS, createPaymentSession, getPaymentLink } from '../services/payment';
 
-const plans = [
-  {
-    id: 'free',
-    name: 'Free',
-    icon: Zap,
-    description: 'Perfeito para começar',
-    price: { monthly: 0, yearly: 0 },
-    features: [
-      '1 pedido por mês',
-      '1 revisão por pedido',
-      'Acesso à comunidade',
-      'Suporte por email',
-      'Marca d\'água nas entregas',
-    ],
-    cta: 'Começar Grátis',
-    popular: false,
-    gradient: 'from-zinc-600 to-zinc-700',
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    icon: Star,
-    description: 'Para criadores sérios',
-    price: { monthly: 97, yearly: 970 },
-    features: [
-      '5 pedidos por mês',
-      '3 revisões por pedido',
-      'Prioridade na fila',
-      'Sem marca d\'água',
-      'Downloads em alta resolução',
-      'Acesso a tutoriais premium',
-      'Suporte prioritário',
-    ],
-    cta: 'Assinar Pro',
-    popular: true,
-    gradient: 'from-indigo-500 to-purple-500',
-  },
-  {
-    id: 'studio',
-    name: 'Studio',
-    icon: Crown,
-    description: 'Para times criativos',
-    price: { monthly: 247, yearly: 2470 },
-    features: [
-      '15 pedidos por mês',
-      'Revisões ilimitadas',
-      'Entrega em até 48h',
-      'Designer dedicado',
-      'Arquivos editáveis',
-      'Licença comercial inclusa',
-      'Workspace para time (até 5)',
-      'Analytics avançado',
-      'Suporte 24/7 via chat',
-    ],
-    cta: 'Assinar Studio',
-    popular: false,
-    gradient: 'from-purple-500 to-pink-500',
-  },
-  {
-    id: 'agency',
-    name: 'Agency',
-    icon: Building2,
-    description: 'Soluções enterprise',
-    price: { monthly: 0, yearly: 0 },
-    customPrice: true,
-    features: [
-      'Pedidos ilimitados',
-      'Time de designers exclusivo',
-      'Entrega expressa garantida',
-      'API de integração',
-      'White-label disponível',
-      'Contrato personalizado',
-      'Gerente de conta dedicado',
-      'SLA garantido',
-      'Treinamento incluso',
-    ],
-    cta: 'Falar com Vendas',
-    popular: false,
-    gradient: 'from-amber-500 to-orange-500',
-  },
-];
+interface PricingProps {
+  onOpenAuth: () => void;
+}
 
-export function Pricing() {
+export default function Pricing({ onOpenAuth }: PricingProps) {
+  const { currentUser, userProfile } = useAuth();
   const [isYearly, setIsYearly] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
+
+  const plans = [
+    {
+      ...PLANS.free,
+      icon: Zap,
+      color: 'from-gray-500 to-gray-600',
+      popular: false
+    },
+    {
+      ...PLANS.pro,
+      icon: Sparkles,
+      color: 'from-blue-500 to-cyan-500',
+      popular: true
+    },
+    {
+      ...PLANS.studio,
+      icon: Crown,
+      color: 'from-purple-500 to-pink-500',
+      popular: false
+    },
+    {
+      ...PLANS.agency,
+      icon: Building2,
+      color: 'from-orange-500 to-red-500',
+      popular: false
+    }
+  ];
+
+  const handleSelectPlan = async (planId: string) => {
+    if (planId === 'free') return;
+    
+    if (!currentUser) {
+      onOpenAuth();
+      return;
+    }
+
+    if (userProfile?.plan === planId) {
+      return;
+    }
+
+    setLoading(planId);
+
+    try {
+      // Criar sessão de pagamento
+      const billingCycle = isYearly ? 'yearly' : 'monthly';
+      const newSessionId = await createPaymentSession(
+        currentUser.uid,
+        currentUser.email || '',
+        planId,
+        billingCycle
+      );
+
+      // Gerar link de pagamento
+      const link = getPaymentLink(planId, billingCycle, newSessionId);
+
+      setSelectedPlan(planId);
+      setPaymentLink(link);
+      setSessionId(newSessionId);
+      setShowPaymentModal(true);
+    } catch (error) {
+      console.error('Erro ao criar sessão:', error);
+      alert('Erro ao processar. Tente novamente.');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (paymentLink) {
+      await navigator.clipboard.writeText(paymentLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleGoToPayment = () => {
+    if (paymentLink) {
+      window.open(paymentLink, '_blank');
+      setShowInstructions(true);
+    }
+  };
+
+  const selectedPlanData = selectedPlan ? plans.find(p => p.id === selectedPlan) : null;
 
   return (
-    <section id="planos" className="py-24 relative">
-      {/* Background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="planos" className="py-20 md:py-32 relative">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="text-center mb-12 md:mb-16"
         >
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 text-purple-400 text-sm font-medium mb-6">
-            <Crown className="w-4 h-4" />
-            Planos & Preços
+          <span className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium">
+            Planos Flexíveis
           </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
-            Escolha o plano <span className="gradient-text">ideal</span>
+          <h2 className="text-3xl md:text-5xl font-bold mt-6 mb-4">
+            Escolha seu{' '}
+            <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+              plano ideal
+            </span>
           </h2>
-          <p className="text-lg text-zinc-400 max-w-2xl mx-auto mb-8">
-            Do hobbyista ao enterprise. Temos o plano perfeito para sua necessidade.
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+            Comece gratuitamente e escale conforme sua necessidade
           </p>
 
-          {/* Billing Toggle */}
-          <div className="inline-flex items-center gap-4 p-2 rounded-xl bg-white/5">
+          {/* Toggle */}
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <span className={`text-sm ${!isYearly ? 'text-white' : 'text-gray-500'}`}>Mensal</span>
             <button
-              onClick={() => setIsYearly(false)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                !isYearly ? 'bg-white text-zinc-900' : 'text-zinc-400 hover:text-white'
+              onClick={() => setIsYearly(!isYearly)}
+              className={`relative w-14 h-7 rounded-full transition-colors ${
+                isYearly ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gray-700'
               }`}
             >
-              Mensal
+              <div
+                className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform ${
+                  isYearly ? 'translate-x-8' : 'translate-x-1'
+                }`}
+              />
             </button>
-            <button
-              onClick={() => setIsYearly(true)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                isYearly ? 'bg-white text-zinc-900' : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Anual
-              <span className="ml-2 text-xs text-green-400">-17%</span>
-            </button>
+            <span className={`text-sm ${isYearly ? 'text-white' : 'text-gray-500'}`}>
+              Anual <span className="text-green-400 text-xs">-20%</span>
+            </span>
           </div>
         </motion.div>
 
         {/* Plans Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {plans.map((plan, index) => (
             <motion.div
               key={plan.id}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
-              className={`relative rounded-2xl ${
-                plan.popular ? 'glass glow-primary' : 'glass-light'
-              } p-6 flex flex-col h-full`}
+              className={`relative rounded-2xl p-6 border transition-all duration-300 ${
+                plan.popular
+                  ? 'bg-gradient-to-b from-purple-500/20 to-pink-500/10 border-purple-500/50 scale-105'
+                  : 'bg-white/5 border-white/10 hover:border-white/20'
+              }`}
             >
               {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-xs font-semibold">
-                  Mais Popular
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium">
+                    Mais Popular
+                  </span>
                 </div>
               )}
 
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-4`}>
+              {userProfile?.plan === plan.id && (
+                <div className="absolute -top-3 right-4">
+                  <span className="px-3 py-1 rounded-full bg-green-500/20 border border-green-500/50 text-green-400 text-xs font-medium">
+                    Seu Plano
+                  </span>
+                </div>
+              )}
+
+              <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${plan.color} flex items-center justify-center mb-4`}>
                 <plan.icon className="w-6 h-6 text-white" />
               </div>
 
-              <h3 className="text-xl font-bold text-white mb-1">{plan.name}</h3>
-              <p className="text-sm text-zinc-400 mb-4">{plan.description}</p>
+              <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
 
-              <div className="mb-6">
-                {plan.customPrice ? (
-                  <div className="text-3xl font-bold text-white">Sob consulta</div>
-                ) : (
-                  <>
-                    <span className="text-4xl font-bold text-white">
-                      R$ {isYearly ? Math.round(plan.price.yearly / 12) : plan.price.monthly}
-                    </span>
-                    {plan.price.monthly > 0 && (
-                      <span className="text-zinc-400 text-sm">/mês</span>
-                    )}
-                    {isYearly && plan.price.yearly > 0 && (
-                      <div className="text-sm text-green-400 mt-1">
-                        R$ {plan.price.yearly}/ano
-                      </div>
-                    )}
-                  </>
+              <div className="flex items-baseline gap-1 mb-6">
+                <span className="text-3xl font-bold text-white">
+                  R$ {isYearly ? plan.priceYearly.toFixed(0) : plan.price.toFixed(2).replace('.', ',')}
+                </span>
+                {plan.price > 0 && (
+                  <span className="text-gray-400 text-sm">/{isYearly ? 'ano' : 'mês'}</span>
                 )}
               </div>
 
-              <ul className="space-y-3 mb-8 flex-grow">
+              <ul className="space-y-3 mb-6">
                 {plan.features.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm">
-                    <Check className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
-                    <span className="text-zinc-300">{feature}</span>
+                  <li key={i} className="flex items-center gap-2 text-sm text-gray-300">
+                    <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <span>{feature}</span>
                   </li>
                 ))}
               </ul>
 
-              <motion.button
-                className={`w-full py-3 px-6 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
-                  plan.popular
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:shadow-lg hover:shadow-indigo-500/25'
+              <button
+                onClick={() => handleSelectPlan(plan.id)}
+                disabled={loading === plan.id || userProfile?.plan === plan.id}
+                className={`w-full py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                  userProfile?.plan === plan.id
+                    ? 'bg-green-500/20 text-green-400 cursor-default'
+                    : plan.id === 'free'
+                    ? 'bg-white/10 text-white hover:bg-white/20'
+                    : plan.popular
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:shadow-purple-500/25'
                     : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
               >
-                {plan.cta}
-                <ArrowRight className="w-4 h-4" />
-              </motion.button>
+                {loading === plan.id ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : userProfile?.plan === plan.id ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Plano Atual
+                  </>
+                ) : plan.id === 'free' ? (
+                  'Começar Grátis'
+                ) : (
+                  'Assinar Agora'
+                )}
+              </button>
             </motion.div>
           ))}
         </div>
 
-        {/* Trust Badges */}
+        {/* Garantia */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mt-16 text-center"
+          className="mt-12 text-center"
         >
-          <p className="text-zinc-400 mb-6">Garantias que oferecemos:</p>
-          <div className="flex flex-wrap justify-center gap-8">
-            {[
-              '7 dias de teste grátis',
-              'Cancele quando quiser',
-              'Suporte humanizado',
-              'Dinheiro de volta',
-            ].map((badge, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                <Check className="w-5 h-5 text-green-400" />
-                <span className="text-zinc-300">{badge}</span>
-              </div>
-            ))}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20">
+            <CheckCircle className="w-4 h-4 text-green-400" />
+            <span className="text-green-400 text-sm">7 dias de garantia em todos os planos</span>
           </div>
         </motion.div>
       </div>
+
+      {/* Modal de Pagamento */}
+      {showPaymentModal && selectedPlanData && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => !showInstructions && setShowPaymentModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-gray-900 border border-white/10 rounded-2xl p-6 md:p-8 max-w-md w-full"
+          >
+            {!showInstructions ? (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-white">Finalizar Assinatura</h3>
+                  <button
+                    onClick={() => setShowPaymentModal(false)}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-400" />
+                  </button>
+                </div>
+
+                <div className={`p-4 rounded-xl bg-gradient-to-r ${selectedPlanData.color} bg-opacity-20 mb-6`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${selectedPlanData.color} flex items-center justify-center`}>
+                      <selectedPlanData.icon className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white">Plano {selectedPlanData.name}</h4>
+                      <p className="text-sm text-gray-300">
+                        R$ {isYearly ? selectedPlanData.priceYearly.toFixed(2).replace('.', ',') : selectedPlanData.price.toFixed(2).replace('.', ',')} / {isYearly ? 'ano' : 'mês'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 mb-6">
+                  <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                    <h4 className="font-medium text-white mb-2 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-yellow-400" />
+                      Como funciona?
+                    </h4>
+                    <ol className="text-sm text-gray-400 space-y-2">
+                      <li>1. Clique em "Ir para Pagamento"</li>
+                      <li>2. Você será redirecionado ao Mercado Pago</li>
+                      <li>3. Realize o pagamento (PIX, Cartão ou Boleto)</li>
+                      <li>4. Seu plano será ativado automaticamente!</li>
+                    </ol>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <span className="text-xs">ID da sessão:</span>
+                    <code className="text-xs bg-white/5 px-2 py-1 rounded">{sessionId?.slice(0, 20)}...</code>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    onClick={handleGoToPayment}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Ir para Pagamento
+                  </button>
+
+                  <button
+                    onClick={handleCopyLink}
+                    className="w-full py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    {copied ? (
+                      <>
+                        <CheckCircle className="w-4 h-4 text-green-400" />
+                        Link Copiado!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copiar Link de Pagamento
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <p className="text-center text-xs text-gray-500 mt-4">
+                  Pagamento seguro processado pelo Mercado Pago
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Página de pagamento aberta!</h3>
+                  <p className="text-gray-400 mb-6">
+                    Complete o pagamento na aba que foi aberta. Após a confirmação, seu plano será ativado automaticamente em alguns minutos.
+                  </p>
+
+                  <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 mb-6">
+                    <p className="text-sm text-yellow-400">
+                      ⚠️ Não feche esta página até concluir o pagamento. Após pagar, aguarde até 5 minutos para a ativação automática.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleGoToPayment}
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-2"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Abrir Página de Pagamento Novamente
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowPaymentModal(false);
+                        setShowInstructions(false);
+                      }}
+                      className="w-full py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/20 transition-all"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-gray-500 mt-4">
+                    Problemas? Entre em contato pelo Instagram: @vaiumaarteaeofc
+                  </p>
+                </div>
+              </>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
     </section>
   );
 }

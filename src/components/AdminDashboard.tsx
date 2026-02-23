@@ -33,6 +33,7 @@ import {
   type PlatformStats,
   type UserRole,
 } from '@/services/admin';
+import { activatePlanManually, PLANS } from '@/services/payment';
 import {
   subscribeToAllPresence,
   type UserPresence,
@@ -207,6 +208,16 @@ export function AdminDashboard({ isOpen, onClose, onOpenChat }: AdminDashboardPr
     } catch (error) {
       console.error(error);
       toast.error('Erro ao atualizar plano');
+    }
+  };
+
+  const handleActivatePlanWithExpiry = async (userId: string, planId: string, billingCycle: 'monthly' | 'yearly') => {
+    try {
+      await activatePlanManually(userId, planId, billingCycle, 'manual_activation');
+      toast.success(`Plano ${PLANS[planId as keyof typeof PLANS]?.name} ativado com sucesso!`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Erro ao ativar plano');
     }
   };
 
@@ -611,13 +622,22 @@ export function AdminDashboard({ isOpen, onClose, onOpenChat }: AdminDashboardPr
 
                                 <select
                                   value={user.plan}
-                                  onChange={(e) => handleUpdatePlan(user.uid, e.target.value)}
+                                  onChange={(e) => {
+                                    const newPlan = e.target.value;
+                                    if (newPlan === 'free') {
+                                      handleUpdatePlan(user.uid, newPlan);
+                                    } else {
+                                      // Perguntar se é mensal ou anual
+                                      const cycle = window.confirm('Ativar como ANUAL?\n\nOK = Anual (1 ano)\nCancelar = Mensal (1 mês)') ? 'yearly' : 'monthly';
+                                      handleActivatePlanWithExpiry(user.uid, newPlan, cycle);
+                                    }
+                                  }}
                                   className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white"
                                 >
                                   <option value="free">Free</option>
-                                  <option value="pro">Pro</option>
-                                  <option value="studio">Studio</option>
-                                  <option value="agency">Agency</option>
+                                  <option value="pro">Pro (Ativar)</option>
+                                  <option value="studio">Studio (Ativar)</option>
+                                  <option value="agency">Agency (Ativar)</option>
                                 </select>
 
                                 <button

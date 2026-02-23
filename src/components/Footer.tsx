@@ -32,8 +32,8 @@ const footerLinks = {
 };
 
 const socialLinks = [
+  { name: 'Instagram', icon: Instagram, href: 'https://www.instagram.com/vaiumaarteaeofc?igsh=MXVtM3pjN3dtYWJyOQ==', primary: true },
   { name: 'Twitter', icon: Twitter, href: '#' },
-  { name: 'Instagram', icon: Instagram, href: '#' },
   { name: 'LinkedIn', icon: Linkedin, href: '#' },
   { name: 'YouTube', icon: Youtube, href: '#' },
 ];
@@ -104,14 +104,34 @@ export function Footer() {
                 <motion.a
                   key={social.name}
                   href={social.href}
-                  className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-all"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
+                    social.primary 
+                      ? 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 text-white hover:opacity-90' 
+                      : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'
+                  }`}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
+                  title={social.name}
                 >
                   <social.icon className="w-5 h-5" />
                 </motion.a>
               ))}
             </div>
+            
+            {/* Instagram CTA */}
+            <motion.a
+              href="https://www.instagram.com/vaiumaarteaeofc?igsh=MXVtM3pjN3dtYWJyOQ=="
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Instagram className="w-4 h-4" />
+              Siga-nos no Instagram
+            </motion.a>
           </div>
 
           {/* Product */}

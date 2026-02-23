@@ -6,33 +6,33 @@ import { OrderModal } from './OrderModal';
 import { AuthModal } from './AuthModal';
 
 const artTypes = [
-  { id: 'logo', name: 'Logo', icon: Sparkles, basePrice: 150 },
-  { id: 'social', name: 'Social Media', icon: Image, basePrice: 80 },
-  { id: 'illustration', name: 'Ilustração', icon: PenTool, basePrice: 200 },
-  { id: 'ui', name: 'UI Design', icon: MonitorPlay, basePrice: 300 },
-  { id: 'branding', name: 'Branding', icon: Palette, basePrice: 500 },
-  { id: 'package', name: 'Embalagem', icon: Package, basePrice: 350 },
+  { id: 'logo', name: 'Logo', icon: Sparkles, basePrice: 35 },
+  { id: 'social', name: 'Social Media', icon: Image, basePrice: 15 },
+  { id: 'illustration', name: 'Ilustração', icon: PenTool, basePrice: 45 },
+  { id: 'ui', name: 'UI Design', icon: MonitorPlay, basePrice: 60 },
+  { id: 'branding', name: 'Branding', icon: Palette, basePrice: 120 },
+  { id: 'package', name: 'Embalagem', icon: Package, basePrice: 80 },
 ];
 
 const complexityLevels = [
   { id: 'simple', name: 'Simples', multiplier: 1, description: 'Design limpo e direto' },
-  { id: 'medium', name: 'Médio', multiplier: 1.5, description: 'Detalhes moderados' },
-  { id: 'complex', name: 'Complexo', multiplier: 2.2, description: 'Alta complexidade visual' },
-  { id: 'premium', name: 'Premium', multiplier: 3, description: 'Nível artístico máximo' },
+  { id: 'medium', name: 'Médio', multiplier: 1.4, description: 'Detalhes moderados' },
+  { id: 'complex', name: 'Complexo', multiplier: 1.8, description: 'Alta complexidade visual' },
+  { id: 'premium', name: 'Premium', multiplier: 2.5, description: 'Nível artístico máximo' },
 ];
 
 const deadlines = [
-  { id: 'urgent', name: '24h', multiplier: 2, label: 'Urgente' },
-  { id: 'fast', name: '3 dias', multiplier: 1.5, label: 'Rápido' },
+  { id: 'urgent', name: '24h', multiplier: 1.8, label: 'Urgente' },
+  { id: 'fast', name: '3 dias', multiplier: 1.3, label: 'Rápido' },
   { id: 'normal', name: '7 dias', multiplier: 1, label: 'Normal' },
-  { id: 'relaxed', name: '15 dias', multiplier: 0.9, label: 'Econômico' },
+  { id: 'relaxed', name: '15 dias', multiplier: 0.85, label: 'Econômico' },
 ];
 
 const revisionOptions = [
   { id: 1, name: '1 revisão', price: 0 },
-  { id: 3, name: '3 revisões', price: 50 },
-  { id: 5, name: '5 revisões', price: 100 },
-  { id: -1, name: 'Ilimitadas', price: 200 },
+  { id: 3, name: '3 revisões', price: 10 },
+  { id: 5, name: '5 revisões', price: 20 },
+  { id: -1, name: 'Ilimitadas', price: 40 },
 ];
 
 export function BudgetSimulator() {

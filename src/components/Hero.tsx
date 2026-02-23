@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, Play, Star, Users, Zap, Palette } from 'lucide-react';
+import { ArrowRight, Star, Users, Zap, Palette, Instagram } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const stats = [
@@ -86,14 +86,17 @@ export function Hero() {
               {currentUser ? 'Solicitar Arte' : 'Começar Gratuitamente'}
               <ArrowRight className="w-5 h-5" />
             </motion.button>
-            <motion.button
-              className="btn-secondary inline-flex items-center justify-center gap-2 text-lg px-8 py-4"
+            <motion.a
+              href="https://www.instagram.com/vaiumaarteaeofc?igsh=MXVtM3pjN3dtYWJyOQ=="
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 text-lg px-8 py-4 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 text-white font-semibold hover:opacity-90 transition-opacity"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Play className="w-5 h-5" />
-              Ver Demonstração
-            </motion.button>
+              <Instagram className="w-5 h-5" />
+              Nosso Instagram
+            </motion.a>
           </motion.div>
 
           {/* Social Proof */}
