@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Users, Shield, Headphones } from 'lucide-react';
+import PaymentSuccess from './components/PaymentSuccess';
+import { PaymentCancelled } from './components/PaymentCancelled';
+import { PaymentPending } from './components/PaymentPending';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Particles } from './components/Particles';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { Features } from './components/Features';
 import { BudgetSimulator } from './components/BudgetSimulator';
-import { Pricing } from './components/Pricing';
+import Pricing from './components/Pricing';
 import { Community } from './components/Community';
 import { Education } from './components/Education';
 import { Testimonials } from './components/Testimonials';
@@ -36,7 +39,54 @@ function AppContent() {
     recipientName: string; 
     orderId?: string; 
   } | null>(null);
+  
+  // Payment states
+  const [paymentSuccessOpen, setPaymentSuccessOpen] = useState(false);
+  const [paymentCancelledOpen, setPaymentCancelledOpen] = useState(false);
+  const [paymentPendingOpen, setPaymentPendingOpen] = useState(false);
+  const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
+  const [paymentId, setPaymentId] = useState<string | undefined>(undefined);
+  
   const { currentUser, userProfile } = useAuth();
+
+  // Check for payment callback in URL hash
+  useEffect(() => {
+    const checkUrlCallback = () => {
+      const hash = window.location.hash;
+      
+      if (hash.includes('/pagamento/sucesso')) {
+        const params = new URLSearchParams(hash.split('?')[1] || '');
+        const sessionId = params.get('session') || params.get('external_reference');
+        const pId = params.get('payment_id') || params.get('collection_id');
+        
+        if (sessionId) {
+          setPaymentSessionId(sessionId);
+          setPaymentId(pId || undefined);
+          setPaymentSuccessOpen(true);
+        }
+        
+        window.history.replaceState(null, '', window.location.pathname);
+      } else if (hash.includes('/pagamento/cancelado') || hash.includes('/pagamento/erro')) {
+        setPaymentCancelledOpen(true);
+        window.history.replaceState(null, '', window.location.pathname);
+      } else if (hash.includes('/pagamento/pendente')) {
+        const params = new URLSearchParams(hash.split('?')[1] || '');
+        const sessionId = params.get('session') || params.get('external_reference');
+        
+        if (sessionId) {
+          setPaymentSessionId(sessionId);
+          setPaymentPendingOpen(true);
+        }
+        
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    };
+
+    checkUrlCallback();
+    
+    window.addEventListener('hashchange', checkUrlCallback);
+    return () => window.removeEventListener('hashchange', checkUrlCallback);
+  }, []);
 
   // Update user presence when logged in
   useEffect(() => {
@@ -44,7 +94,6 @@ function AppContent() {
 
     const userRole = getUserRole(userProfile.email || null, userProfile.role as UserRole);
     
-    // Set user as online
     updatePresence(
       currentUser.uid,
       userProfile.displayName,
@@ -54,7 +103,6 @@ function AppContent() {
       'home'
     );
 
-    // Set up interval to keep presence alive
     const interval = setInterval(() => {
       updatePresence(
         currentUser.uid,
@@ -64,9 +112,8 @@ function AppContent() {
         true,
         'home'
       );
-    }, 60000); // Update every minute
+    }, 60000);
 
-    // Handle page unload
     const handleUnload = () => {
       setUserOffline(currentUser.uid);
     };
@@ -129,28 +176,13 @@ function AppContent() {
       
       {/* Main Content */}
       <main className="relative z-10">
-        {/* Hero Section */}
         <Hero />
-        
-        {/* Features Section */}
         <Features />
-        
-        {/* Budget Simulator */}
         <BudgetSimulator />
-        
-        {/* Pricing Plans */}
-        <Pricing />
-        
-        {/* Testimonials */}
+        <Pricing onOpenAuth={() => handleOpenAuth('register')} />
         <Testimonials />
-        
-        {/* Community */}
         <Community />
-        
-        {/* Education */}
         <Education />
-        
-        {/* Final CTA */}
         <CTA />
       </main>
       
@@ -161,7 +193,6 @@ function AppContent() {
       <AnimatePresence>
         {currentUser && !chatOpen && !dashboardOpen && !forumOpen && !adminOpen && (
           <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-            {/* Admin Button (only for mods+) */}
             {canAccessAdmin && (
               <>
                 <motion.button
@@ -191,7 +222,6 @@ function AppContent() {
               </>
             )}
 
-            {/* Forum Button */}
             <motion.button
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -205,7 +235,6 @@ function AppContent() {
               <Users className="w-5 h-5 text-white" />
             </motion.button>
 
-            {/* Chat Button */}
             <motion.button
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -251,14 +280,14 @@ function AppContent() {
       <AdminDashboard
         isOpen={adminOpen}
         onClose={() => setAdminOpen(false)}
-        onOpenChat={(userId, userName, orderId) => {
+        onOpenChat={(userId: string, userName: string, orderId?: string) => {
           setAdminChatTarget({ recipientId: userId, recipientName: userName, orderId });
           setAdminChatOpen(true);
           setAdminOpen(false);
         }}
       />
 
-      {/* Admin Chat (for staff to chat with clients) */}
+      {/* Admin Chat */}
       <AdminChat
         isOpen={adminChatOpen}
         onClose={() => {
@@ -267,6 +296,50 @@ function AppContent() {
         }}
         initialTarget={adminChatTarget || undefined}
       />
+
+      {/* Payment Success Modal */}
+      <AnimatePresence>
+        {paymentSuccessOpen && paymentSessionId && (
+          <PaymentSuccess
+            sessionId={paymentSessionId}
+            paymentId={paymentId}
+            onClose={() => {
+              setPaymentSuccessOpen(false);
+              setPaymentSessionId(null);
+              setPaymentId(undefined);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Payment Cancelled Modal */}
+      <AnimatePresence>
+        {paymentCancelledOpen && (
+          <PaymentCancelled
+            onClose={() => setPaymentCancelledOpen(false)}
+            onRetry={() => {
+              setPaymentCancelledOpen(false);
+              document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Payment Pending Modal */}
+      <AnimatePresence>
+        {paymentPendingOpen && paymentSessionId && (
+          <PaymentPending
+            onClose={() => {
+              setPaymentPendingOpen(false);
+              setPaymentSessionId(null);
+            }}
+            onCheckStatus={() => {
+              // Refresh the page to check status
+              window.location.reload();
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
