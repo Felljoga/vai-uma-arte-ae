@@ -112,5 +112,17 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update, delete: if isOwnerUser(userId);
     }
+
+    // Payment Sessions
+    match /paymentSessions/{sessionId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        isPlatformOwner() ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isPlatformOwner() || isAdmin();
+      allow delete: if isPlatformOwner();
+    }
   }
 }
