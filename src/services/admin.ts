@@ -14,7 +14,7 @@ import {
 import { db } from '@/lib/firebase';
 
 // User Role Types
-export type UserRole = 'owner' | 'admin' | 'moderator' | 'client' | 'member';
+export type UserRole = 'owner' | 'admin' | 'moderator' | 'partner' | 'client' | 'member';
 
 // Owner email - this is the main admin
 export const OWNER_EMAIL = 'wandersonsilvasantos2@gmail.com';
@@ -24,6 +24,7 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   owner: 100,
   admin: 80,
   moderator: 60,
+  partner: 50,
   client: 40,
   member: 20,
 };
@@ -38,6 +39,8 @@ export const ROLE_CONFIG: Record<UserRole, {
   gradient: string;
   badge: string;
   icon: string;
+  frameGlow?: boolean;
+  specialEffects?: string[];
 }> = {
   owner: {
     name: 'owner',
@@ -48,6 +51,8 @@ export const ROLE_CONFIG: Record<UserRole, {
     gradient: 'from-amber-400 via-yellow-500 to-amber-600',
     badge: '👑',
     icon: 'Crown',
+    frameGlow: true,
+    specialEffects: ['crown', 'sparkle', 'glow'],
   },
   admin: {
     name: 'admin',
@@ -58,6 +63,8 @@ export const ROLE_CONFIG: Record<UserRole, {
     gradient: 'from-red-500 to-rose-600',
     badge: '🛡️',
     icon: 'Shield',
+    frameGlow: true,
+    specialEffects: ['glow'],
   },
   moderator: {
     name: 'moderator',
@@ -68,6 +75,20 @@ export const ROLE_CONFIG: Record<UserRole, {
     gradient: 'from-purple-500 to-violet-600',
     badge: '⚔️',
     icon: 'Sword',
+    frameGlow: true,
+    specialEffects: ['glow'],
+  },
+  partner: {
+    name: 'partner',
+    displayName: 'Parceiro',
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/20',
+    borderColor: 'border-cyan-500/50',
+    gradient: 'from-cyan-400 via-teal-500 to-emerald-500',
+    badge: '🤝',
+    icon: 'Handshake',
+    frameGlow: true,
+    specialEffects: ['glow', 'partner-badge'],
   },
   client: {
     name: 'client',

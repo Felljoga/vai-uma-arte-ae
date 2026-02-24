@@ -32,6 +32,8 @@ export interface ForumChannel {
   createdAt: Date;
 }
 
+import { type UserRole } from '@/services/admin';
+
 // Forum Thread
 export interface ForumThread {
   id: string;
@@ -39,7 +41,7 @@ export interface ForumThread {
   authorId: string;
   authorName: string;
   authorAvatar: string | null;
-  authorRole: 'owner' | 'admin' | 'moderator' | 'client' | 'member';
+  authorRole: UserRole;
   title: string;
   content: string;
   isPinned: boolean;
@@ -48,6 +50,7 @@ export interface ForumThread {
   likedBy: string[];
   repliesCount: number;
   views: number;
+  viewedBy: string[];  // Array de userIds que já visualizaram
   lastReplyAt: Date;
   lastReplyBy: string;
   createdAt: Date;
@@ -61,7 +64,7 @@ export interface ForumReply {
   authorId: string;
   authorName: string;
   authorAvatar: string | null;
-  authorRole: 'owner' | 'admin' | 'moderator' | 'client' | 'member';
+  authorRole: UserRole;
   content: string;
   likes: number;
   likedBy: string[];
@@ -135,7 +138,7 @@ export const defaultChannels: Omit<ForumChannel, 'id' | 'createdAt'>[] = [
     color: 'from-yellow-500 to-amber-500',
     order: 6,
     isPrivate: true,
-    allowedRoles: ['owner', 'admin', 'moderator', 'client'],
+    allowedRoles: ['owner', 'admin', 'moderator', 'partner', 'client'],
   },
 ];
 
@@ -196,7 +199,7 @@ export async function createThread(
   authorId: string,
   authorName: string,
   authorAvatar: string | null,
-  authorRole: ForumThread['authorRole'],
+  authorRole: UserRole,
   title: string,
   content: string
 ): Promise<string> {
@@ -216,6 +219,7 @@ export async function createThread(
     likedBy: [],
     repliesCount: 0,
     views: 0,
+    viewedBy: [],
     lastReplyAt: serverTimestamp(),
     lastReplyBy: authorName,
     createdAt: serverTimestamp(),
@@ -312,12 +316,49 @@ export async function getThread(threadId: string): Promise<ForumThread | null> {
   } as ForumThread;
 }
 
-// View thread (increment views)
-export async function viewThread(threadId: string): Promise<void> {
+// View thread (increment views - anti-spam: each user can only view once)
+export async function viewThread(threadId: string, userId?: string): Promise<boolean> {
   const threadRef = doc(db, 'forumThreads', threadId);
+  const threadSnap = await getDoc(threadRef);
+  
+  if (!threadSnap.exists()) return false;
+  
+  const data = threadSnap.data();
+  const viewedBy: string[] = data.viewedBy || [];
+  
+  // Se não tem userId (usuário não logado), não conta
+  if (!userId) return false;
+  
+  // Verifica se já visualizou
+  if (viewedBy.includes(userId)) {
+    return false; // Já contou, não incrementa
+  }
+  
+  // Incrementa e adiciona ao array de quem visualizou
   await updateDoc(threadRef, {
     views: increment(1),
+    viewedBy: arrayUnion(userId),
   });
+  
+  return true;
+}
+
+// Check if user already viewed thread
+export function hasUserViewedThread(thread: ForumThread, userId?: string): boolean {
+  if (!userId) return false;
+  return (thread.viewedBy || []).includes(userId);
+}
+
+// Check if user already liked thread
+export function hasUserLikedThread(thread: ForumThread, userId?: string): boolean {
+  if (!userId) return false;
+  return (thread.likedBy || []).includes(userId);
+}
+
+// Check if user already liked reply
+export function hasUserLikedReply(reply: ForumReply, userId?: string): boolean {
+  if (!userId) return false;
+  return (reply.likedBy || []).includes(userId);
 }
 
 // Like/unlike thread
@@ -360,7 +401,7 @@ export async function createReply(
   authorId: string,
   authorName: string,
   authorAvatar: string | null,
-  authorRole: ForumReply['authorRole'],
+  authorRole: UserRole,
   content: string,
   replyTo?: string,
   replyToAuthor?: string
