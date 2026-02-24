@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwnerUser(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isPlatformOwner() {
+      return isAuthenticated() && request.auth.token.email == 'wandersonsilvasantos2@gmail.com';
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        isPlatformOwner() ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    function isModerator() {
+      return isAuthenticated() && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'moderator'
+      );
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwnerUser(userId);
+      allow update: if isOwnerUser(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Orders collection
+    match /orders/{orderId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isOwnerUser(resource.data.userId) || isModerator()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Chat rooms collection (using order ID as room ID)
+    match /chatRooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      
+      // Messages subcollection
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+      }
+    }
+
+    // Forum channels
+    match /forumChannels/{channelId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Forum threads
+    match /forumThreads/{threadId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      // Permite update para autor, moderador, OU para atualizar views/likes (anti-spam)
+      allow update: if isAuthenticated() && (
+        isOwnerUser(resource.data.authorId) || 
+        isModerator() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'viewedBy', 'likes', 'likedBy'])
+      );
+      allow delete: if isModerator();
+      
+      // Replies subcollection
+      match /replies/{replyId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        // Permite update para autor, moderador, OU para atualizar likes (anti-spam)
+        allow update: if isAuthenticated() && (
+          isOwnerUser(resource.data.authorId) || 
+          isModerator() ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy'])
+        );
+        allow delete: if isModerator();
+      }
+    }
+
+    // Community artworks
+    match /artworks/{artworkId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isOwnerUser(resource.data.userId) || isModerator()
+      );
+      allow delete: if isAuthenticated() && (
+        isOwnerUser(resource.data.userId) || isModerator()
+      );
+    }
+
+    // Presence system
+    match /presence/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwnerUser(userId);
+      allow delete: if isOwnerUser(userId) || isAdmin();
+    }
+
+    // Notifications
+    match /users/{userId}/notifications/{notificationId} {
+      allow read: if isOwnerUser(userId);
+      allow create: if isAuthenticated();
+      allow update, delete: if isOwnerUser(userId);
+    }
+
+    // Payment Sessions
+    match /paymentSessions/{sessionId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        isPlatformOwner() ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isPlatformOwner() || isAdmin();
+      allow delete: if isPlatformOwner();
+    }
+
+    // Partner Applications
+    match /partnerApplications/{applicationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isModerator();
+      allow delete: if isAdmin();
+    }
+    
+    // Partners (approved partners)
+    match /partners/{partnerId} {
+      allow read: if true; // Everyone can view approved partners
+      allow create: if isModerator();
+      // Permite update para moderador OU para atualizar views/clicks (anti-spam)
+      allow update: if isModerator() || (
+        isAuthenticated() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount', 'viewedBy', 'clickCount', 'clickedBy'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Discord Servers (Only owner can manage)
+    match /discordServers/{serverId} {
+      allow read: if true; // Everyone can view
+      allow create, update, delete: if isPlatformOwner();
+    }
+
+    // Transactions
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        isModerator()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isPlatformOwner() || isAdmin();
+      allow delete: if isPlatformOwner();
+    }
+  }
+}
