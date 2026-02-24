@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Star, Users, Zap, Palette, Instagram } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAudio } from '@/contexts/AudioContext';
 
 const stats = [
   { icon: Users, value: '50K+', label: 'Criativos' },
@@ -17,8 +18,10 @@ const avatars = [
 
 export function Hero() {
   const { currentUser } = useAuth();
+  const { playClick } = useAudio();
 
   const scrollToSimulator = () => {
+    playClick();
     document.getElementById('recursos')?.scrollIntoView({ behavior: 'smooth' });
   };
 

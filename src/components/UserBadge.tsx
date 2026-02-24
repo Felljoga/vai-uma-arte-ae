@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Crown, Shield, Sword, Check, User } from 'lucide-react';
+import { Crown, Shield, Sword, Check, User, Handshake } from 'lucide-react';
 import { ROLE_CONFIG, type UserRole } from '@/services/admin';
 
 interface UserBadgeProps {
@@ -15,6 +15,7 @@ const iconMap = {
   Sword,
   Check,
   User,
+  Handshake,
 };
 
 export function UserBadge({ role, size = 'md', showLabel = true, className = '' }: UserBadgeProps) {
@@ -94,6 +95,9 @@ export function UserAvatarWithFrame({
 
   const isOwner = role === 'owner';
   const isAdmin = role === 'admin';
+  const isMod = role === 'moderator';
+  const isPartner = role === 'partner';
+  const hasGlow = isOwner || isAdmin || isMod || isPartner;
 
   return (
     <motion.div
@@ -103,10 +107,18 @@ export function UserAvatarWithFrame({
       whileTap={onClick ? { scale: 0.95 } : undefined}
     >
       {/* Animated glow for special roles */}
-      {(isOwner || isAdmin) && (
+      {hasGlow && (
         <div
           className={`absolute inset-0 rounded-full bg-gradient-to-r ${config.gradient} blur-md opacity-50 animate-pulse`}
           style={{ transform: 'scale(1.2)' }}
+        />
+      )}
+      
+      {/* Partner special effect */}
+      {isPartner && (
+        <div
+          className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400 via-teal-500 to-emerald-500 blur-lg opacity-30 animate-pulse"
+          style={{ transform: 'scale(1.4)', animationDuration: '2s' }}
         />
       )}
 
@@ -176,7 +188,8 @@ export function UserNameWithBadge({
   };
 
   const isOwner = role === 'owner';
-  const isSpecial = role === 'owner' || role === 'admin' || role === 'moderator';
+  const isPartner = role === 'partner';
+  const isSpecial = role === 'owner' || role === 'admin' || role === 'moderator' || role === 'partner';
 
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
@@ -185,6 +198,7 @@ export function UserNameWithBadge({
       >
         {name}
         {isOwner && <span className="ml-1">👑</span>}
+        {isPartner && <span className="ml-1">🤝</span>}
       </span>
       {showRoleBadge && role !== 'member' && (
         <UserBadge role={role} size="sm" showLabel={false} />

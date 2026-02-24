@@ -47,6 +47,7 @@ interface ForumProps {
 
 export function Forum({ isOpen, onClose }: ForumProps) {
   const { currentUser, userProfile } = useAuth();
+  // Áudio gerenciado globalmente
   const [channels, setChannels] = useState<ForumChannel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<ForumChannel | null>(null);
   const [threads, setThreads] = useState<ForumThread[]>([]);
@@ -105,12 +106,14 @@ export function Forum({ isOpen, onClose }: ForumProps) {
   useEffect(() => {
     if (!selectedThread) return;
 
-    // Increment view count
-    viewThread(selectedThread.id).catch(console.error);
+    // Increment view count (anti-spam: só conta 1 vez por usuário)
+    if (currentUser) {
+      viewThread(selectedThread.id, currentUser.uid).catch(console.error);
+    }
 
     const unsubscribe = subscribeToReplies(selectedThread.id, setReplies);
     return () => unsubscribe();
-  }, [selectedThread]);
+  }, [selectedThread, currentUser]);
 
   // Scroll to bottom on new replies
   useEffect(() => {

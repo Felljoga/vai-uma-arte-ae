@@ -1,35 +1,24 @@
 import { motion } from 'framer-motion';
-import { Sparkles, Twitter, Instagram, Linkedin, Youtube, Heart, ArrowUp } from 'lucide-react';
+import { Sparkles, Twitter, Instagram, Linkedin, Youtube, Heart, ArrowUp, Shield, FileText, Cookie, Scale } from 'lucide-react';
 
-const footerLinks = {
-  produto: [
-    { name: 'Recursos', href: '#recursos' },
-    { name: 'Preços', href: '#planos' },
-    { name: 'Comunidade', href: '#comunidade' },
-    { name: 'Educacional', href: '#educacional' },
-    { name: 'API', href: '#' },
-  ],
-  empresa: [
-    { name: 'Sobre nós', href: '#' },
-    { name: 'Blog', href: '#' },
-    { name: 'Carreiras', href: '#' },
-    { name: 'Parceiros', href: '#' },
-    { name: 'Imprensa', href: '#' },
-  ],
-  recursos: [
-    { name: 'Central de Ajuda', href: '#' },
-    { name: 'Documentação', href: '#' },
-    { name: 'Guias', href: '#' },
-    { name: 'Webinars', href: '#' },
-    { name: 'Status', href: '#' },
-  ],
-  legal: [
-    { name: 'Privacidade', href: '#' },
-    { name: 'Termos de Uso', href: '#' },
-    { name: 'Cookies', href: '#' },
-    { name: 'Licenças', href: '#' },
-  ],
-};
+interface FooterProps {
+  onOpenPrivacy: () => void;
+  onOpenTerms: () => void;
+  onOpenCookies: () => void;
+  onOpenLicenses: () => void;
+  onOpenHelp: () => void;
+  onOpenDocs: () => void;
+  onOpenGuides: () => void;
+  onOpenStatus: () => void;
+  onOpenAbout: () => void;
+  onOpenBlog: () => void;
+  onOpenCareers: () => void;
+  onOpenPartners: () => void;
+  onOpenFeatures: () => void;
+  onOpenPricing: () => void;
+  onOpenCommunity: () => void;
+  onOpenEducational: () => void;
+}
 
 const socialLinks = [
   { name: 'Instagram', icon: Instagram, href: 'https://www.instagram.com/vaiumaarteaeofc?igsh=MXVtM3pjN3dtYWJyOQ==', primary: true },
@@ -38,10 +27,43 @@ const socialLinks = [
   { name: 'YouTube', icon: Youtube, href: '#' },
 ];
 
-export function Footer() {
+export function Footer({ 
+  onOpenPrivacy, onOpenTerms, onOpenCookies, onOpenLicenses, 
+  onOpenHelp, onOpenDocs, onOpenGuides, onOpenStatus,
+  onOpenAbout, onOpenBlog, onOpenCareers, onOpenPartners,
+  onOpenFeatures, onOpenPricing, onOpenCommunity, onOpenEducational
+}: FooterProps) {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const footerLinks = {
+    produto: [
+      { name: 'Recursos', href: '#', onClick: onOpenFeatures },
+      { name: 'Preços', href: '#', onClick: onOpenPricing },
+      { name: 'Comunidade', href: '#', onClick: onOpenCommunity },
+      { name: 'Educacional', href: '#', onClick: onOpenEducational },
+    ],
+    empresa: [
+      { name: 'Sobre nós', href: '#', onClick: onOpenAbout },
+      { name: 'Blog', href: '#', onClick: onOpenBlog },
+      { name: 'Parceiros', href: '#parceiros', onClick: onOpenPartners },
+      { name: 'Carreiras', href: '#', onClick: onOpenCareers },
+    ],
+    recursos: [
+      { name: 'Central de Ajuda', href: '#', onClick: onOpenHelp },
+      { name: 'Documentação', href: '#', onClick: onOpenDocs },
+      { name: 'Guias', href: '#', onClick: onOpenGuides },
+      { name: 'Status', href: '#', onClick: onOpenStatus },
+    ],
+  };
+
+  const legalLinks = [
+    { name: 'Privacidade', icon: Shield, onClick: onOpenPrivacy, color: 'text-green-400' },
+    { name: 'Termos de Uso', icon: FileText, onClick: onOpenTerms, color: 'text-blue-400' },
+    { name: 'Cookies', icon: Cookie, onClick: onOpenCookies, color: 'text-amber-400' },
+    { name: 'Licenças', icon: Scale, onClick: onOpenLicenses, color: 'text-purple-400' },
+  ];
 
   return (
     <footer className="relative pt-24 pb-8 border-t border-white/5">
@@ -79,7 +101,10 @@ export function Footer() {
             </motion.button>
           </div>
           <p className="text-xs text-zinc-500 mt-4">
-            Ao se inscrever, você concorda com nossa política de privacidade.
+            Ao se inscrever, você concorda com nossa{' '}
+            <button onClick={onOpenPrivacy} className="text-indigo-400 hover:underline">
+              política de privacidade
+            </button>.
           </p>
         </motion.div>
 
@@ -140,9 +165,18 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.produto.map((link) => (
                 <li key={link.name}>
-                  <a href={link.href} className="text-sm text-zinc-400 hover:text-white transition-colors">
-                    {link.name}
-                  </a>
+                  {link.onClick ? (
+                    <button 
+                      onClick={link.onClick}
+                      className="text-sm text-zinc-400 hover:text-white transition-colors"
+                    >
+                      {link.name}
+                    </button>
+                  ) : (
+                    <a href={link.href} className="text-sm text-zinc-400 hover:text-white transition-colors">
+                      {link.name}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
@@ -154,9 +188,18 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.empresa.map((link) => (
                 <li key={link.name}>
-                  <a href={link.href} className="text-sm text-zinc-400 hover:text-white transition-colors">
-                    {link.name}
-                  </a>
+                  {link.onClick ? (
+                    <button 
+                      onClick={link.onClick}
+                      className="text-sm text-zinc-400 hover:text-white transition-colors"
+                    >
+                      {link.name}
+                    </button>
+                  ) : (
+                    <a href={link.href} className="text-sm text-zinc-400 hover:text-white transition-colors">
+                      {link.name}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
@@ -168,9 +211,12 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.recursos.map((link) => (
                 <li key={link.name}>
-                  <a href={link.href} className="text-sm text-zinc-400 hover:text-white transition-colors">
+                  <button 
+                    onClick={link.onClick}
+                    className="text-sm text-zinc-400 hover:text-white transition-colors"
+                  >
                     {link.name}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -180,15 +226,50 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-white mb-4">Legal</h4>
             <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
+              {legalLinks.map((link) => (
                 <li key={link.name}>
-                  <a href={link.href} className="text-sm text-zinc-400 hover:text-white transition-colors">
+                  <button 
+                    onClick={link.onClick}
+                    className="text-sm text-zinc-400 hover:text-white transition-colors flex items-center gap-2 group"
+                  >
+                    <link.icon className={`w-4 h-4 ${link.color} opacity-50 group-hover:opacity-100 transition-opacity`} />
                     {link.name}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
           </div>
+        </div>
+
+        {/* Legal Badges */}
+        <div className="flex flex-wrap items-center justify-center gap-4 mb-8">
+          <motion.button
+            onClick={onOpenPrivacy}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm hover:bg-green-500/20 transition-colors"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Shield className="w-4 h-4" />
+            LGPD Compliant
+          </motion.button>
+          <motion.button
+            onClick={onOpenCookies}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm hover:bg-amber-500/20 transition-colors"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Cookie className="w-4 h-4" />
+            Política de Cookies
+          </motion.button>
+          <motion.button
+            onClick={onOpenTerms}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm hover:bg-blue-500/20 transition-colors"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <FileText className="w-4 h-4" />
+            Termos de Uso
+          </motion.button>
         </div>
 
         {/* Bottom */}

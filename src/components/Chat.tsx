@@ -13,6 +13,7 @@ import {
   CheckCheck,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAudio } from '@/contexts/AudioContext';
 import {
   subscribeToMessages,
   subscribeToUserChatRooms,
@@ -33,6 +34,7 @@ interface ChatProps {
 
 export function Chat({ isOpen, onClose, orderId, orderTitle }: ChatProps) {
   const { currentUser, userProfile } = useAuth();
+  const { playMessage, playSend, playClick } = useAudio();
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -60,6 +62,13 @@ export function Chat({ isOpen, onClose, orderId, orderTitle }: ChatProps) {
 
     setLoading(true);
     const unsubscribe = subscribeToMessages(selectedRoom, (msgs) => {
+      // Play notification sound for new messages
+      if (msgs.length > messages.length && msgs.length > 0) {
+        const lastMsg = msgs[msgs.length - 1];
+        if (lastMsg.senderId !== currentUser?.uid) {
+          playMessage();
+        }
+      }
       setMessages(msgs);
       setLoading(false);
       // Mark as read
@@ -99,6 +108,7 @@ export function Chat({ isOpen, onClose, orderId, orderTitle }: ChatProps) {
         userProfile.photoURL,
         newMessage.trim()
       );
+      playSend();
       setNewMessage('');
       inputRef.current?.focus();
     } catch (error) {
@@ -110,6 +120,7 @@ export function Chat({ isOpen, onClose, orderId, orderTitle }: ChatProps) {
   };
 
   const handleSelectRoom = (room: ChatRoom) => {
+    playClick();
     setSelectedRoom(room.orderId);
     setSelectedRoomTitle(room.orderTitle);
   };

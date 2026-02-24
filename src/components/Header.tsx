@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Sparkles, User, LogOut, Users, Shield, Instagram } from 'lucide-react';
+import { Menu, X, Sparkles, User, LogOut, Users, Shield, Instagram, Handshake } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserRole, hasPermission, type UserRole } from '@/services/admin';
 import { UserAvatarWithFrame } from './UserBadge';
@@ -16,10 +16,12 @@ interface HeaderProps {
   onOpenAuth: (mode: 'login' | 'register') => void;
   onOpenDashboard: () => void;
   onOpenForum?: () => void;
+  onOpenCommunity?: () => void;
   onOpenAdmin?: () => void;
+  onOpenPartners?: () => void;
 }
 
-export function Header({ onOpenAuth, onOpenDashboard, onOpenForum, onOpenAdmin }: HeaderProps) {
+export function Header({ onOpenAuth, onOpenDashboard, onOpenForum, onOpenCommunity, onOpenAdmin, onOpenPartners }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { currentUser, userProfile, logout } = useAuth();
 
@@ -86,6 +88,18 @@ export function Header({ onOpenAuth, onOpenDashboard, onOpenForum, onOpenAdmin }
                 >
                   <Users className="w-4 h-4" />
                   Fórum
+                </motion.button>
+              )}
+              {/* Partners Link */}
+              {onOpenPartners && (
+                <motion.button
+                  onClick={onOpenPartners}
+                  className="px-4 py-2 text-sm font-medium text-cyan-400 hover:text-white transition-colors rounded-lg hover:bg-cyan-500/10 flex items-center gap-2"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Handshake className="w-4 h-4" />
+                  Parceiros
                 </motion.button>
               )}
             </nav>
@@ -211,6 +225,18 @@ export function Header({ onOpenAuth, onOpenDashboard, onOpenForum, onOpenAdmin }
                     >
                       <Users className="w-4 h-4" />
                       Fórum da Comunidade
+                    </button>
+                  )}
+                  {onOpenPartners && (
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        onOpenPartners();
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-cyan-400 hover:text-white hover:bg-cyan-500/10 rounded-lg transition-colors"
+                    >
+                      <Handshake className="w-4 h-4" />
+                      Parceiros Oficiais
                     </button>
                   )}
                   <div className="pt-4 flex flex-col gap-2">
