@@ -71,8 +71,11 @@ service cloud.firestore {
     match /forumThreads/{threadId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
+      // Permite update para autor, moderador, OU para atualizar views/likes (anti-spam)
       allow update: if isAuthenticated() && (
-        isOwnerUser(resource.data.authorId) || isModerator()
+        isOwnerUser(resource.data.authorId) || 
+        isModerator() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'viewedBy', 'likes', 'likedBy'])
       );
       allow delete: if isModerator();
       
@@ -80,8 +83,11 @@ service cloud.firestore {
       match /replies/{replyId} {
         allow read: if isAuthenticated();
         allow create: if isAuthenticated();
+        // Permite update para autor, moderador, OU para atualizar likes (anti-spam)
         allow update: if isAuthenticated() && (
-          isOwnerUser(resource.data.authorId) || isModerator()
+          isOwnerUser(resource.data.authorId) || 
+          isModerator() ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy'])
         );
         allow delete: if isModerator();
       }
@@ -119,6 +125,43 @@ service cloud.firestore {
         request.auth.uid == resource.data.userId ||
         isPlatformOwner() ||
         isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isPlatformOwner() || isAdmin();
+      allow delete: if isPlatformOwner();
+    }
+
+    // Partner Applications
+    match /partnerApplications/{applicationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isModerator();
+      allow delete: if isAdmin();
+    }
+    
+    // Partners (approved partners)
+    match /partners/{partnerId} {
+      allow read: if true; // Everyone can view approved partners
+      allow create: if isModerator();
+      // Permite update para moderador OU para atualizar views/clicks (anti-spam)
+      allow update: if isModerator() || (
+        isAuthenticated() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount', 'viewedBy', 'clickCount', 'clickedBy'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Discord Servers (Only owner can manage)
+    match /discordServers/{serverId} {
+      allow read: if true; // Everyone can view
+      allow create, update, delete: if isPlatformOwner();
+    }
+
+    // Transactions
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        isModerator()
       );
       allow create: if isAuthenticated();
       allow update: if isPlatformOwner() || isAdmin();
