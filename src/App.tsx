@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Users, Shield, Headphones } from 'lucide-react';
+import { MessageCircle, Users, Shield, Headphones, Volume2 } from 'lucide-react';
 import PaymentSuccess from './components/PaymentSuccess';
 import { PaymentCancelled } from './components/PaymentCancelled';
 import { PaymentPending } from './components/PaymentPending';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AudioProvider, useAudio } from './contexts/AudioContext';
 import { Particles } from './components/Particles';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
@@ -23,6 +24,15 @@ import { Chat } from './components/Chat';
 import { Forum } from './components/Forum';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminChat } from './components/AdminChat';
+import { Partners, PartnersSection } from './components/Partners';
+import { AudioSettings } from './components/AudioSettings';
+import { AudioControls } from './components/AudioControls';
+import { CommunityHub } from './components/CommunityHub';
+import { LegalPages } from './components/LegalPages';
+import { CookieConsent } from './components/CookieConsent';
+import { ResourcesPages } from './components/ResourcesPages';
+import { CompanyPages } from './components/CompanyPages';
+import { ProductPages } from './components/ProductPages';
 import { getUserRole, hasPermission, type UserRole } from './services/admin';
 import { updatePresence, setUserOffline } from './services/realtime';
 
@@ -32,8 +42,27 @@ function AppContent() {
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [forumOpen, setForumOpen] = useState(false);
+  const [communityHubOpen, setCommunityHubOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminChatOpen, setAdminChatOpen] = useState(false);
+  const [partnersOpen, setPartnersOpen] = useState(false);
+  const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
+  
+  // Legal pages states
+  const [legalPageOpen, setLegalPageOpen] = useState(false);
+  const [currentLegalPage, setCurrentLegalPage] = useState<'privacy' | 'terms' | 'cookies' | 'licenses'>('privacy');
+  
+  // Resources pages states
+  const [resourcesPageOpen, setResourcesPageOpen] = useState(false);
+  const [currentResourcePage, setCurrentResourcePage] = useState<'help' | 'docs' | 'guides' | 'status'>('help');
+  
+  // Company pages states
+  const [companyPageOpen, setCompanyPageOpen] = useState(false);
+  const [currentCompanyPage, setCurrentCompanyPage] = useState<'about' | 'blog' | 'careers'>('about');
+  
+  // Product pages states
+  const [productPageOpen, setProductPageOpen] = useState(false);
+  const [currentProductPage, setCurrentProductPage] = useState<'features' | 'pricing' | 'community' | 'educational'>('features');
   const [adminChatTarget, setAdminChatTarget] = useState<{ 
     recipientId: string; 
     recipientName: string; 
@@ -48,6 +77,7 @@ function AppContent() {
   const [paymentId, setPaymentId] = useState<string | undefined>(undefined);
   
   const { currentUser, userProfile } = useAuth();
+  const { playModal, playClick, playSuccess, playError, settings } = useAudio();
 
   // Check for payment callback in URL hash
   useEffect(() => {
@@ -63,11 +93,13 @@ function AppContent() {
           setPaymentSessionId(sessionId);
           setPaymentId(pId || undefined);
           setPaymentSuccessOpen(true);
+          playSuccess();
         }
         
         window.history.replaceState(null, '', window.location.pathname);
       } else if (hash.includes('/pagamento/cancelado') || hash.includes('/pagamento/erro')) {
         setPaymentCancelledOpen(true);
+        playError();
         window.history.replaceState(null, '', window.location.pathname);
       } else if (hash.includes('/pagamento/pendente')) {
         const params = new URLSearchParams(hash.split('?')[1] || '');
@@ -86,7 +118,7 @@ function AppContent() {
     
     window.addEventListener('hashchange', checkUrlCallback);
     return () => window.removeEventListener('hashchange', checkUrlCallback);
-  }, []);
+  }, [playSuccess, playError]);
 
   // Update user presence when logged in
   useEffect(() => {
@@ -130,6 +162,17 @@ function AppContent() {
   const handleOpenAuth = (mode: 'login' | 'register') => {
     setAuthMode(mode);
     setAuthModalOpen(true);
+    playModal();
+  };
+
+  const handleOpenModal = (setter: (open: boolean) => void) => {
+    playModal();
+    setter(true);
+  };
+
+  const handleCloseModal = (setter: (open: boolean) => void) => {
+    playClick();
+    setter(false);
   };
 
   const userRole: UserRole = getUserRole(userProfile?.email || null, userProfile?.role);
@@ -169,9 +212,11 @@ function AppContent() {
       {/* Navigation */}
       <Header 
         onOpenAuth={handleOpenAuth}
-        onOpenDashboard={() => setDashboardOpen(true)}
-        onOpenForum={() => setForumOpen(true)}
-        onOpenAdmin={() => setAdminOpen(true)}
+        onOpenDashboard={() => handleOpenModal(setDashboardOpen)}
+        onOpenForum={() => handleOpenModal(setForumOpen)}
+        onOpenCommunity={() => handleOpenModal(setCommunityHubOpen)}
+        onOpenAdmin={() => handleOpenModal(setAdminOpen)}
+        onOpenPartners={() => handleOpenModal(setPartnersOpen)}
       />
       
       {/* Main Content */}
@@ -181,18 +226,105 @@ function AppContent() {
         <BudgetSimulator />
         <Pricing onOpenAuth={() => handleOpenAuth('register')} />
         <Testimonials />
+        <PartnersSection onOpenPartners={() => handleOpenModal(setPartnersOpen)} />
         <Community />
         <Education />
         <CTA />
       </main>
       
       {/* Footer */}
-      <Footer />
+      <Footer 
+        onOpenPrivacy={() => {
+          setCurrentLegalPage('privacy');
+          setLegalPageOpen(true);
+        }}
+        onOpenTerms={() => {
+          setCurrentLegalPage('terms');
+          setLegalPageOpen(true);
+        }}
+        onOpenCookies={() => {
+          setCurrentLegalPage('cookies');
+          setLegalPageOpen(true);
+        }}
+        onOpenLicenses={() => {
+          setCurrentLegalPage('licenses');
+          setLegalPageOpen(true);
+        }}
+        onOpenHelp={() => {
+          setCurrentResourcePage('help');
+          setResourcesPageOpen(true);
+        }}
+        onOpenDocs={() => {
+          setCurrentResourcePage('docs');
+          setResourcesPageOpen(true);
+        }}
+        onOpenGuides={() => {
+          setCurrentResourcePage('guides');
+          setResourcesPageOpen(true);
+        }}
+        onOpenStatus={() => {
+          setCurrentResourcePage('status');
+          setResourcesPageOpen(true);
+        }}
+        onOpenAbout={() => {
+          setCurrentCompanyPage('about');
+          setCompanyPageOpen(true);
+        }}
+        onOpenBlog={() => {
+          setCurrentCompanyPage('blog');
+          setCompanyPageOpen(true);
+        }}
+        onOpenCareers={() => {
+          setCurrentCompanyPage('careers');
+          setCompanyPageOpen(true);
+        }}
+        onOpenPartners={() => handleOpenModal(setPartnersOpen)}
+        onOpenFeatures={() => {
+          setCurrentProductPage('features');
+          setProductPageOpen(true);
+        }}
+        onOpenPricing={() => {
+          setCurrentProductPage('pricing');
+          setProductPageOpen(true);
+        }}
+        onOpenCommunity={() => {
+          setCurrentProductPage('community');
+          setProductPageOpen(true);
+        }}
+        onOpenEducational={() => {
+          setCurrentProductPage('educational');
+          setProductPageOpen(true);
+        }}
+      />
+
+      {/* Audio Controls - Flutuante */}
+      <AudioControls />
 
       {/* Floating Action Buttons */}
       <AnimatePresence>
         {currentUser && !chatOpen && !dashboardOpen && !forumOpen && !adminOpen && (
           <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+            {/* Audio Settings Button */}
+            <motion.button
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => {
+                playClick();
+                setAudioSettingsOpen(true);
+              }}
+              className={`w-10 h-10 rounded-full ${
+                settings.enabled 
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
+                  : 'bg-zinc-700'
+              } flex items-center justify-center shadow-lg transition-all`}
+              title="Configurações de Som"
+            >
+              <Volume2 className="w-4 h-4 text-white" />
+            </motion.button>
+
             {canAccessAdmin && (
               <>
                 <motion.button
@@ -201,7 +333,7 @@ function AppContent() {
                   exit={{ scale: 0, opacity: 0 }}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => setAdminChatOpen(true)}
+                  onClick={() => handleOpenModal(setAdminChatOpen)}
                   className="w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-shadow"
                   title="Chat com Clientes"
                 >
@@ -213,7 +345,7 @@ function AppContent() {
                   exit={{ scale: 0, opacity: 0 }}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => setAdminOpen(true)}
+                  onClick={() => handleOpenModal(setAdminOpen)}
                   className="w-12 h-12 rounded-full bg-gradient-to-r from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/30 hover:shadow-red-500/50 transition-shadow"
                   title="Painel Admin"
                 >
@@ -228,7 +360,7 @@ function AppContent() {
               exit={{ scale: 0, opacity: 0 }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => setForumOpen(true)}
+              onClick={() => handleOpenModal(setForumOpen)}
               className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-shadow"
               title="Comunidade"
             >
@@ -241,7 +373,7 @@ function AppContent() {
               exit={{ scale: 0, opacity: 0 }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => setChatOpen(true)}
+              onClick={() => handleOpenModal(setChatOpen)}
               className="w-14 h-14 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-shadow"
               title="Chat"
             >
@@ -251,38 +383,50 @@ function AppContent() {
         )}
       </AnimatePresence>
 
+      {/* Audio Settings */}
+      <AudioSettings 
+        isOpen={audioSettingsOpen}
+        onClose={() => setAudioSettingsOpen(false)}
+      />
+
       {/* Auth Modal */}
       <AuthModal 
         isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
+        onClose={() => handleCloseModal(setAuthModalOpen)}
         initialMode={authMode}
       />
 
       {/* Dashboard */}
       <Dashboard 
         isOpen={dashboardOpen}
-        onClose={() => setDashboardOpen(false)}
+        onClose={() => handleCloseModal(setDashboardOpen)}
       />
 
       {/* Global Chat */}
       <Chat
         isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
+        onClose={() => handleCloseModal(setChatOpen)}
       />
 
       {/* Forum */}
       <Forum
         isOpen={forumOpen}
-        onClose={() => setForumOpen(false)}
+        onClose={() => handleCloseModal(setForumOpen)}
+      />
+
+      {/* Partners */}
+      <Partners
+        isOpen={partnersOpen}
+        onClose={() => handleCloseModal(setPartnersOpen)}
       />
 
       {/* Admin Dashboard */}
       <AdminDashboard
         isOpen={adminOpen}
-        onClose={() => setAdminOpen(false)}
+        onClose={() => handleCloseModal(setAdminOpen)}
         onOpenChat={(userId: string, userName: string, orderId?: string) => {
           setAdminChatTarget({ recipientId: userId, recipientName: userName, orderId });
-          setAdminChatOpen(true);
+          handleOpenModal(setAdminChatOpen);
           setAdminOpen(false);
         }}
       />
@@ -291,7 +435,7 @@ function AppContent() {
       <AdminChat
         isOpen={adminChatOpen}
         onClose={() => {
-          setAdminChatOpen(false);
+          handleCloseModal(setAdminChatOpen);
           setAdminChatTarget(null);
         }}
         initialTarget={adminChatTarget || undefined}
@@ -340,6 +484,47 @@ function AppContent() {
           />
         )}
       </AnimatePresence>
+
+      {/* Legal Pages */}
+      <LegalPages 
+        isOpen={legalPageOpen}
+        onClose={() => setLegalPageOpen(false)}
+        page={currentLegalPage}
+      />
+
+      {/* Resources Pages */}
+      <ResourcesPages 
+        isOpen={resourcesPageOpen}
+        onClose={() => setResourcesPageOpen(false)}
+        initialPage={currentResourcePage}
+      />
+
+      {/* Company Pages */}
+      <CompanyPages 
+        isOpen={companyPageOpen}
+        onClose={() => setCompanyPageOpen(false)}
+        initialPage={currentCompanyPage}
+        onOpenPartners={() => {
+          setCompanyPageOpen(false);
+          handleOpenModal(setPartnersOpen);
+        }}
+      />
+
+      {/* Product Pages */}
+      <ProductPages 
+        isOpen={productPageOpen}
+        onClose={() => setProductPageOpen(false)}
+        initialPage={currentProductPage}
+        onOpenAuth={() => handleOpenAuth('register')}
+      />
+
+      {/* Cookie Consent Banner */}
+      <CookieConsent 
+        onOpenCookiePolicy={() => {
+          setCurrentLegalPage('cookies');
+          setLegalPageOpen(true);
+        }}
+      />
     </div>
   );
 }
@@ -347,7 +532,9 @@ function AppContent() {
 export function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <AudioProvider>
+        <AppContent />
+      </AudioProvider>
     </AuthProvider>
   );
 }
